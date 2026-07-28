@@ -1,0 +1,34 @@
+[project]
+name = "vinea"
+version = "0.1.0"
+description = "Agronomic decision agents for a vineyard — should I irrigate? can I spray?"
+readme = "README.md"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    "pydantic>=2.7,<3",
+    # Pinned to v1.x: Pydantic AI renamed result_type->output_type / result.data->result.output
+    # before 1.0, so a v1 floor protects us from silent API drift mid-build.
+    "pydantic-ai>=1.0,<2",
+    "pydantic-graph>=1.0,<2",   # used as the 3-agent graph in phase 3 (#10); pulled by pydantic-ai too
+    "python-dotenv>=1.0,<2",
+]
+
+[project.scripts]
+# `uv run vinea` is the one command (resolve + install + run, no venv activation).
+vinea = "vinea.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vinea"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
