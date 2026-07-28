@@ -33,6 +33,9 @@ dependencies = [
     # is for the charts' dataframes — a UI-layer dep; the core stays pandas-free.
     "streamlit>=1.40",
     "pandas>=2.0",
+    # phase 12 (evals): the eval gate wraps the deterministic oracles as pydantic-evals
+    # Evaluators; same major line as pydantic-ai/graph.
+    "pydantic-evals>=1.0,<2",
 ]
 
 [project.scripts]

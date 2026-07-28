@@ -1,0 +1,67 @@
+name: CI
+
+# The gate every push and PR passes: lint, a migrated Postgres, the full test
+# suite (offline -- conftest sets ALLOW_MODEL_REQUESTS = False, so no live LLM
+# ever runs in CI), and the prompt-drift check. Nothing here needs a model key.
+# Added in phase 12, alongside the eval gate it exists to protect.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # A real Postgres for the DB-backed tests -- the same schema the app runs,
+    # migrated by Alembic below. Port 5432 here (the local 55433 in
+    # docker-compose is only a host-collision workaround, not needed in CI).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: vinea
+          POSTGRES_PASSWORD: vinea
+          POSTGRES_DB: vinea
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vinea"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://vinea:vinea@localhost:5432/vinea
+      VINEA_TEST_DATABASE_URL: postgresql+psycopg://vinea:vinea@localhost:5432/vinea
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.12"
+
+      - name: Sync dependencies (locked)
+        run: uv sync --locked
+
+      - name: Lint
+        run: uv run ruff check
+
+      - name: Migrate the test database
+        run: uv run alembic upgrade head
+
+      - name: Tests (offline -- ALLOW_MODEL_REQUESTS = False, no live LLM)
+        run: uv run pytest
+
+      # The fail-open floor is only safe if it stays close to what production
+      # serves (S7.3). This is a no-op without Langfuse credentials -- an
+      # unpublished prompt is "not published", not drift -- and becomes a real
+      # gate once LANGFUSE_* secrets are set on the repo.
+      - name: Prompt drift check (bundled floor vs @production)
+        run: uv run python -m vinea.prompts.drift
+        env:
+          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}

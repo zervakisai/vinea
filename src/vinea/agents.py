@@ -10,6 +10,7 @@ The agents NEVER recompute physics — they reason over the FeatureBuilder's cle
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from datetime import date
 
@@ -26,6 +27,18 @@ from .contracts import (
 )
 from .deps import Deps
 from .ingest import DataQuality
+from .prompts import defaults
+from .prompts import registry as prompts
+
+
+def _prompt_label() -> str:
+    """Which registry label to fetch: production by default, overridable.
+
+    A deployment sets VINEA_PROMPT_LABEL=staging to preview a staging prompt
+    without a code change -- the label is a runtime pointer, exactly as B3 argues.
+    Defaults to production so nothing changes for a normal run.
+    """
+    return os.environ.get("VINEA_PROMPT_LABEL", "production")
 
 # --- agent deps: crop config + the day's features (so validators can ground-check) ---
 
@@ -87,16 +100,26 @@ def _degrade(confidence: float, dq: DataQuality) -> tuple[float, str | None]:
 # --- dynamic instruction renderers (pure fns so they're unit-testable) -----------
 
 def render_irrigation_context(d: IrrDeps) -> str:
+    # The B3 seam (phase 12): the framing is a registry template fetched by name@label;
+    # the day's numbers are substituted here, locally, and never reach the
+    # registry. The bundled default renders the identical text, so with the
+    # registry unconfigured (tests, offline) behaviour is unchanged.
     c, f = d.crop, d.features
-    return (
-        f"Crop: {c.crop} ({c.irrigation_method}-irrigated). As of {d.run_date.isoformat()}, "
-        f"advising for {d.target_date.isoformat()}. "
-        f"Injected config: Kc={c.kc}, RAW/MAD trigger={c.raw_mm} mm, TAW={c.taw_mm} mm, "
-        f"refill cap (field capacity)={c.taw_mm} mm. "
-        f"Computed (DO NOT recompute): current_depletion_mm={f.current_depletion_mm}. "
-        f"Data quality: {_dq_note(d.data_quality)}."
-        # TODO(B3): swap this f-string for ctx.deps.registry.get('agronomy_advisor@production') + bundled fallback
-    )
+    return prompts.render(
+        defaults.IRRIGATION,
+        _prompt_label(),
+        {
+            "crop": c.crop,
+            "irrigation_method": c.irrigation_method,
+            "run_date": d.run_date.isoformat(),
+            "target_date": d.target_date.isoformat(),
+            "kc": c.kc,
+            "raw_mm": c.raw_mm,
+            "taw_mm": c.taw_mm,
+            "current_depletion_mm": f.current_depletion_mm,
+            "dq_note": _dq_note(d.data_quality),
+        },
+    ).text
 
 
 def render_spray_context(d: SprayDeps) -> str:
@@ -104,26 +127,40 @@ def render_spray_context(d: SprayDeps) -> str:
     lo, hi = c.deltat_ideal
     wlo, whi = c.wind_ideal_ms
     direction = "higher = more suitable" if c.spray_index_higher_is_better else "lower = more suitable"
-    return (
-        f"Crop: {c.crop}, spray sensitivity: {c.spray_sensitivity}. As of {d.run_date.isoformat()}, "
-        f"advising for {d.target_date.isoformat()}. "
-        f"Injected thresholds: Delta T ideal {lo}-{hi} °C, marginal {hi}-{c.deltat_marginal_upper} °C, "
-        f">{c.deltat_marginal_upper} unsuitable, <{c.deltat_inversion_below} inversion; wind ideal "
-        f"{wlo}-{whi} m/s; Spray Index {direction}, cutoff {c.spray_index_cutoff}. "
-        f"Data quality: {_dq_note(d.data_quality)}."
-        # TODO(B3): swap for registry-fetched prompt + bundled fallback
-    )
+    return prompts.render(
+        defaults.SPRAY,
+        _prompt_label(),
+        {
+            "crop": c.crop,
+            "spray_sensitivity": c.spray_sensitivity,
+            "run_date": d.run_date.isoformat(),
+            "target_date": d.target_date.isoformat(),
+            "deltat_ideal_low": lo,
+            "deltat_ideal_high": hi,
+            "deltat_marginal_upper": c.deltat_marginal_upper,
+            "deltat_inversion_below": c.deltat_inversion_below,
+            "wind_ideal_low": wlo,
+            "wind_ideal_high": whi,
+            "spray_index_direction": direction,
+            "spray_index_cutoff": c.spray_index_cutoff,
+            "dq_note": _dq_note(d.data_quality),
+        },
+    ).text
 
 
 def render_coordinator_context(d: CoordDeps) -> str:
     c = d.crop
-    return (
-        f"Crop: {c.crop}, {c.irrigation_method}-irrigated, deficit-irrigation strategy. As of "
-        f"{d.run_date.isoformat()}, advising for {d.target_date.isoformat()}. Reconcile the two typed "
-        f"sub-advices into one coherent, sequenced day; explain interactions in plain grower language. "
-        f"Data quality: {_dq_note(d.data_quality)}."
-        # TODO(B3): swap for registry-fetched prompt + bundled fallback
-    )
+    return prompts.render(
+        defaults.COORDINATOR,
+        _prompt_label(),
+        {
+            "crop": c.crop,
+            "irrigation_method": c.irrigation_method,
+            "run_date": d.run_date.isoformat(),
+            "target_date": d.target_date.isoformat(),
+            "dq_note": _dq_note(d.data_quality),
+        },
+    ).text
 
 
 # --- run input renderers (the variable numbers the agent reasons over) -----------
