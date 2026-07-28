@@ -29,6 +29,10 @@ dependencies = [
     # never runs a model. uvicorn runs it; httpx (above) drives the TestClient.
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    # phase 11 (UI): a Streamlit dashboard that talks ONLY to the API (ADR-005). pandas
+    # is for the charts' dataframes — a UI-layer dep; the core stays pandas-free.
+    "streamlit>=1.40",
+    "pandas>=2.0",
 ]
 
 [project.scripts]
