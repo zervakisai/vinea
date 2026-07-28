@@ -8,7 +8,8 @@ if any model were touched, and returns a 202 with a task id before an advisory
 exists.
 
 Routes:
-  GET  /health                              liveness + DB reachability
+  GET  /health                              liveness: is this process answering?
+  GET  /ready                               readiness: can it serve? 503 if not
   POST /advisories/{tenant}/{run_date}      enqueue; 202 + task handle
   GET  /advisories/{tenant}/{run_date}      one advisory + provenance
   GET  /advisories/{tenant}?from=&to=       history summaries
@@ -22,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from datetime import date
 
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, Response, status
 from sqlalchemy import Engine, text
 from sqlmodel import Session
 
@@ -64,14 +65,50 @@ app = FastAPI(
 )
 
 
-@app.get("/health", response_model=HealthResponse)
-def health(session: Session = Depends(get_session)) -> HealthResponse:
-    """Liveness + a real DB round trip. Unauthenticated by design."""
+def _database_state(session: Session) -> str:
     try:
         session.execute(text("SELECT 1"))
-        database = "ok"
+        return "ok"
     except Exception:  # noqa: BLE001 -- health must report, not raise
-        database = "unreachable"
+        return "unreachable"
+
+
+@app.get("/health", response_model=HealthResponse)
+def health(session: Session = Depends(get_session)) -> HealthResponse:
+    """Liveness + a real DB round trip. Unauthenticated by design.
+
+    Always 200, on purpose: this answers "is this process alive?", and the answer
+    does not change when Postgres goes away. A liveness probe that fails on an
+    unreachable database restarts every pod in the deployment, repeatedly, for a
+    fault that no restart can fix -- turning a database outage into a crash loop
+    that is *harder* to recover from. The database state is reported in the body
+    instead, where a human or a body-reading healthcheck can act on it.
+    """
+    return HealthResponse(status="ok", database=_database_state(session))
+
+
+@app.get(
+    "/ready",
+    response_model=HealthResponse,
+    responses={503: {"model": HealthResponse, "description": "Not ready to serve"}},
+)
+def ready(response: Response, session: Session = Depends(get_session)) -> HealthResponse:
+    """Readiness: should this pod receive traffic? 503 when it should not.
+
+    The counterpart to /health, and a genuinely different question. Every route
+    other than /health reads the database, so a pod that cannot reach Postgres
+    cannot serve -- it should be taken out of the load balancer, but NOT
+    restarted. Kubernetes draws exactly that line: readiness removes endpoints,
+    liveness kills containers.
+
+    It has to be a status code rather than a field, because an httpGet probe reads
+    the status and nothing else. That is also why /health alone was not enough:
+    `curl -f /health` passes with no database at all (phase 13).
+    """
+    database = _database_state(session)
+    if database != "ok":
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        return HealthResponse(status="degraded", database=database)
     return HealthResponse(status="ok", database=database)
 
 

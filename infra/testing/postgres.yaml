@@ -1,0 +1,71 @@
+# A Postgres for the ephemeral test cluster ONLY.
+#
+# This is a fixture, not the architecture. ADR-001 says the advisories and their
+# provenance are the one thing in this system that cannot be recomputed, and
+# ADR-006 refuses to put them on the newest component in the stack -- production
+# Postgres is managed and lives outside the cluster. What runs here is the
+# equivalent of `docker compose up postgres`: something for the tests to talk to,
+# with no volume, no backup, and no expectation of surviving anything.
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres
+spec:
+  ports:
+    - port: 5432
+      targetPort: 5432
+  selector:
+    app: postgres
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16
+          env:
+            - name: POSTGRES_USER
+              value: vinea
+            - name: POSTGRES_PASSWORD
+              # A literal password in a tracked file, which the house rule forbids
+              # -- and it is fine exactly here, because this database is created
+              # empty in a throwaway cluster and destroyed with it. The rule is
+              # about secrets; this is not one. Anything the application reads
+              # still comes from the Secret the chart references by name.
+              value: vinea
+            - name: POSTGRES_DB
+              value: vinea
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          ports:
+            - containerPort: 5432
+          # emptyDir: the data is meant to vanish. A PVC here would outlive the
+          # test and make the next run's migration a different scenario.
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              # `psql -c 'SELECT 1'`, not `pg_isready` -- pg_isready never
+              # authenticates, so it reports ready for a server whose role and
+              # database do not exist yet (the same note is in docker-compose.yml).
+              command: ["sh", "-c", "psql -U vinea -d vinea -c 'SELECT 1'"]
+            initialDelaySeconds: 5
+            periodSeconds: 3
+            failureThreshold: 20
+          resources:
+            requests: {cpu: 50m, memory: 128Mi}
+      volumes:
+        - name: data
+          emptyDir: {}

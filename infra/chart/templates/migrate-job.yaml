@@ -1,0 +1,73 @@
+{{- if .Values.migrate.enabled }}
+{{/*
+The ordering guarantee of phase 13, expressed declaratively.
+
+`pre-install,pre-upgrade` makes Helm run this Job and WAIT for it to succeed
+before it applies anything else in the release. So the schema is migrated before
+a single new pod is created, let alone made ready. The alternative everyone
+reaches for first -- `alembic upgrade head` in an initContainer -- works
+perfectly at one replica and then races at two: every pod runs it, they serialise
+behind Alembic's lock on alembic_version, and the losers can exceed their startup
+probe and be killed while waiting.
+
+hook-weight orders hooks among themselves; there is only one here, but leaving it
+explicit means adding a second (a seed job, a smoke check) does not silently
+reorder this one.
+
+hook-delete-policy is `before-hook-creation` ALONE, and the omission is the
+point: with `hook-succeeded` in the list (the first draft had it), a successful
+migration deletes its own Job -- and the e2e's "did the hook run?" assertion
+then finds an empty list precisely when everything worked. Evidence should
+outlive success. The Job is reaped anyway: ttlSecondsAfterFinished takes it
+within the hour, and `before-hook-creation` clears any leftover on the next
+deploy. A *failed* Job also stays behind, pod and logs intact, for inspection.
+*/}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vinea.fullname" . }}-migrate
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: migrate
+  annotations:
+    helm.sh/hook: pre-install,pre-upgrade
+    helm.sh/hook-weight: "-5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  # Forward-only migrations, and one attempt. A migration that failed halfway is
+  # a thing to look at, not to retry blindly -- Alembic runs each revision in a
+  # transaction, so a failure rolls that revision back, and re-running without
+  # understanding why simply fails again while the deploy window burns.
+  backoffLimit: 0
+  # Reaped an hour after finishing, so a cluster does not accumulate one Job per
+  # deploy while still leaving time to read the logs of the last one.
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "vinea.labels" . | nindent 8 }}
+        app.kubernetes.io/component: migrate
+    spec:
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: migrate
+          image: {{ include "vinea.appImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "vinea.securityContext" . | nindent 12 }}
+          {{- include "vinea.env" . | nindent 10 }}
+          # The same image as the app, so the schema and the code that expects it
+          # are versioned together by construction rather than by process.
+          command: ["alembic", "upgrade", "head"]
+          resources:
+            {{- toYaml .Values.migrate.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # readOnlyRootFilesystem is on, and Python wants a writable tmp.
+        - name: tmp
+          emptyDir: {}
+{{- end }}

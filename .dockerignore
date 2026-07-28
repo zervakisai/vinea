@@ -1,0 +1,24 @@
+# The build context is uploaded to the daemon before anything runs, so the venv
+# alone (313 MB) would dominate the build time of a 200 MB image.
+.venv/
+**/__pycache__/
+**/*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+.git/
+.github/
+infra/
+docs/
+*.md
+# Re-included: pyproject's `readme = "README.md"` means the build fails without it.
+# NOTE: .dockerignore has no inline comments -- a trailing `# ...` becomes part of
+# the pattern, which silently un-does the negation and costs you a build.
+!README.md
+
+.env
+*.key
+.DS_Store
+.idea/
+.vscode/

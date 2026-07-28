@@ -1,0 +1,11 @@
+apiVersion: v2
+name: vinea
+description: Agronomic decision agents — API, dashboard, nightly worker, and the migration hook
+type: application
+
+# The chart version moves when the chart's shape changes; appVersion tracks the
+# application image. They are separate on purpose: re-tuning a probe is a chart
+# change with no new image, and shipping code is an appVersion change with no
+# chart edit.
+version: 0.1.0
+appVersion: "0.1.0"

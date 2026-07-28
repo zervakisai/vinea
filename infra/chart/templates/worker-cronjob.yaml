@@ -1,0 +1,72 @@
+{{- if .Values.worker.enabled }}
+{{/*
+The worker is a CronJob, not a Deployment, and that is the whole reason this
+system needed an orchestrator rather than a request-driven runtime. It is not a
+server: it wakes, claims tasks with SELECT ... FOR UPDATE SKIP LOCKED, drains the
+queue, and exits 0. A Deployment would treat that clean exit as a crash and
+restart it in a loop, all day, for a job that has nothing to do until 02:00.
+*/}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "vinea.fullname" . }}-worker
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  schedule: {{ .Values.worker.schedule | quote }}
+  timeZone: {{ .Values.worker.timeZone | quote }}
+  # Forbid, not Allow: a run that overruns into the next window must not be
+  # joined by a second one. The queue would survive it -- SKIP LOCKED means two
+  # workers never claim the same task -- but a night that needs two overlapping
+  # workers is a signal to look at, and silently doubling concurrency hides it.
+  concurrencyPolicy: Forbid
+  # A missed window is not made up. "Tomorrow's advice" has a target date; running
+  # last night's batch at 09:00 produces advice for a day already underway.
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      # ZERO. Retry belongs to exactly one layer (ADR-003, S3.3): the worker
+      # re-enqueues a failed task with backoff, and the task row carries attempts
+      # and max_attempts. A Kubernetes backoffLimit on top of that is the
+      # double-retry footgun one level further out -- k8s restarts the pod, the
+      # pod re-drains the queue, and the night's model budget multiplies.
+      backoffLimit: 0
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            {{- include "vinea.labels" . | nindent 12 }}
+            app.kubernetes.io/component: worker
+        spec:
+          restartPolicy: Never
+          securityContext:
+            fsGroup: 1001
+          containers:
+            - name: worker
+              image: {{ include "vinea.appImage" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- include "vinea.securityContext" . | nindent 16 }}
+              {{- include "vinea.env" . | nindent 14 }}
+              # `command` (not `args`): the image declares CMD and no ENTRYPOINT,
+              # so setting args alone would leave the argv split across two
+              # sources. One place, fully spelled out.
+              command:
+                - "python"
+                - "-m"
+                - "vinea.jobs"
+                - "work"
+                - "--max-tasks"
+                - {{ .Values.worker.maxTasks | quote }}
+              resources:
+                {{- toYaml .Values.worker.resources | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}

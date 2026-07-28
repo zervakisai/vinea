@@ -1,0 +1,71 @@
+# Defaults are the *local kind* deployment: no ingress, one replica each, images
+# loaded into the node rather than pulled. A paid cluster overrides this file; it
+# does not need a different chart.
+
+image:
+  repository: vinea
+  # Empty -> Chart.appVersion. Pinning the tag in values means a deploy is a
+  # values change, which is what makes `helm rollback` meaningful.
+  tag: ""
+  pullPolicy: IfNotPresent
+
+uiImage:
+  repository: vinea-ui
+  tag: ""
+  pullPolicy: IfNotPresent
+
+# The one Secret every workload reads, by reference. The chart NEVER templates a
+# Secret: the house rule is that secrets do not live in tracked files, and in
+# Kubernetes the manifests are tracked. Create it out of band, from a SealedSecret
+# (see infra/sealed-secrets/README.md) or `kubectl create secret`.
+secret:
+  name: vinea-secrets
+
+# Non-secret configuration. Anything here is safe to read in a `helm get values`.
+config:
+  model: "anthropic:claude-sonnet-4-5"
+  promptLabel: "production"
+  logLevel: "info"
+
+api:
+  replicaCount: 2          # >1 so a rolling deploy actually overlaps versions
+  port: 8000
+  resources:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {memory: 512Mi}
+
+ui:
+  enabled: true
+  # One replica, and session affinity on the Service. Streamlit holds per-session
+  # server state over a websocket; a second replica without affinity serves half
+  # the interactions from a pod that has never heard of the session.
+  replicaCount: 1
+  port: 8501
+  resources:
+    requests: {cpu: 50m, memory: 256Mi}
+    limits: {memory: 768Mi}
+
+worker:
+  enabled: true
+  # 02:00 local, which is what DESIGN.md B1 designed the batch window around.
+  schedule: "0 2 * * *"
+  timeZone: "Europe/Athens"
+  maxTasks: 100
+  resources:
+    requests: {cpu: 100m, memory: 256Mi}
+    limits: {memory: 768Mi}
+
+migrate:
+  # The pre-upgrade hook. Disable only if you run migrations out of band and know
+  # why -- an expand migration that has not run before new pods start is the one
+  # ordering this chart exists to guarantee.
+  enabled: true
+  resources:
+    requests: {cpu: 50m, memory: 192Mi}
+    limits: {memory: 512Mi}
+
+ingress:
+  enabled: false
+  className: ""
+  host: vinea.local
+  annotations: {}

@@ -65,3 +65,82 @@ jobs:
           LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
           LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
+
+  # --------------------------------------------------------------------------
+  # phase 13: the deploy path, exercised rather than diagrammed.
+  #
+  # `needs: test` is the ordering the phase argued was not negotiable:
+  # test -> build -> migrate -> deploy -> smoke. The migrate step is not a step
+  # here on purpose -- it is the chart's pre-upgrade hook, so the ordering lives
+  # in the artifact rather than in this file, where a future edit could reorder it.
+  # --------------------------------------------------------------------------
+  deploy:
+    name: Deploy to an ephemeral cluster
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: azure/setup-helm@v4
+        with:
+          version: v3.16.2
+
+      - name: Install kind
+        run: |
+          curl -sSLo ./kind https://kind.sigs.k8s.io/dl/v0.32.0/kind-linux-amd64
+          chmod +x ./kind && sudo mv ./kind /usr/local/bin/kind
+
+      - name: Lint the chart
+        run: helm lint infra/chart
+
+      # The SAME script a human runs locally. A pipeline that reimplements the
+      # deploy in YAML is a second implementation nobody executes on a laptop,
+      # and it drifts until the day you need it.
+      - name: End-to-end (build, load, migrate hook, rollout, smoke)
+        run: ./infra/kind-e2e.sh
+
+      # A failed deploy with no output is a failed deploy you debug by pushing
+      # again. Everything needed to read the failure, collected once.
+      - name: Diagnostics
+        if: failure()
+        run: |
+          kubectl get pods -A || true
+          kubectl describe pods -l app.kubernetes.io/name=vinea || true
+          kubectl logs -l app.kubernetes.io/component=migrate --tail=200 || true
+          kubectl logs -l app.kubernetes.io/component=api --tail=100 || true
+          helm status vinea || true
+
+  # --------------------------------------------------------------------------
+  # phase 13: the paid path is checked, never applied.
+  #
+  # `validate` and `fmt` are all CI can honestly do here. `plan` queries provider
+  # APIs, so it needs real credentials and a billing account -- and a plan that
+  # cannot run is not a gate, it is a step that always passes. Apply is a manual
+  # operation with a budget attached; see infra/tofu/main.tf.
+  # --------------------------------------------------------------------------
+  infra:
+    name: OpenTofu (validate, never apply)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: infra/tofu
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.12.5
+
+      - name: Format check
+        run: tofu fmt -check -diff
+
+      # -backend=false: no state, no credentials, no cloud contact. Enough to
+      # resolve providers and type-check every resource and variable.
+      - name: Init (no backend)
+        run: tofu init -backend=false
+
+      - name: Validate
+        run: tofu validate

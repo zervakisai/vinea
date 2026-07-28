@@ -13,7 +13,7 @@ It is also a **teaching repository**. The one idea it exists to argue is:
 > arithmetic it would hallucinate, and every number it emits is grounded in a real
 > input, enforced by output validators.
 
-## Built in 12 phases
+## Built in 13 phases
 
 Each phase is one commit with a tag, and one lesson in [`docs/phases/`](docs/phases/).
 So you can read the argument in order, or jump into the code at any stage:
@@ -38,23 +38,24 @@ git checkout main
 | 10 | API | [10](docs/phases/10-api.md) | Enqueue and read; never run a model in the request |
 | 11 | Dashboard | [11](docs/phases/11-dashboard.md) | The UI may only speak HTTP |
 | 12 | Prompt registry & eval gate | [12](docs/phases/12-prompts-and-evals.md) | Deterministic oracles beat an LLM judge |
+| 13 | Containerize & deploy | [13](docs/phases/13-containerize-and-deploy.md) | Code and schema cannot move atomically |
 
 The production layers do not reach into the core built in phases 1–4. That is a
 checkable claim, not a slogan — and worth checking *precisely*, because which files
 are exempt is the interesting part:
 
 ```bash
-# Unchanged from phase 4 to phase 12 — the physics, the contracts, the crop
-# config, the topology, the conflict facts, the orchestration entry:
-git diff --ignore-blank-lines phase-04 phase-12 -- \
+# Unchanged from phase 4 all the way to phase 13 — the physics, the contracts,
+# the crop config, the topology, the conflict facts, the orchestration entry:
+git diff --ignore-blank-lines phase-04 phase-13 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 
 # Additive only — not one line removed:
-git diff phase-04 phase-12 -- src/vinea/ingest.py src/vinea/config.py
+git diff phase-04 phase-13 -- src/vinea/ingest.py src/vinea/config.py
 
 # Genuinely changed, and you should expect these to be:
-git diff phase-04 phase-12 -- src/vinea/agents.py src/vinea/cli.py
+git diff phase-04 phase-13 -- src/vinea/agents.py src/vinea/cli.py
 ```
 
 `agents.py` changes in phase 12, when the instruction f-strings become registry
@@ -273,6 +274,9 @@ src/vinea/  config · ingest · deps · contracts · features        the determi
             evals/      oracles, asymmetric scoring, golden, judge phase 12
 data/       the two CSVs + ATTRIBUTION.md
 scripts/    fetch_dataset.py — regenerates data/ from Open-Meteo
+Dockerfile  two targets: `app` (API + worker, 309 MB) and `ui`      phase 13
+infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh         phase 13
+            sealed-secrets/ · testing/ the throwaway Postgres
 docs/       adr/ · phases/ — the five decisions and the twelve lessons
 migrations/ Alembic versions (the schema we actually ship)
 tests/      offline via TestModel/FunctionModel · fixtures/

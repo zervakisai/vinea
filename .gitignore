@@ -25,3 +25,13 @@ dist/
 .DS_Store
 .idea/
 .vscode/
+
+# --- OpenTofu / Terraform (phase 13) ---
+# .terraform/ is a provider cache (hundreds of MB); state can hold live
+# credentials. The lock file IS committed, for the same reason uv.lock is:
+# reproducible provider versions.
+infra/tofu/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

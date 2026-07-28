@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vinea.fullname" . }}-api
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # maxUnavailable 0: the old pods keep serving until a new one is READY, so
+      # a deploy never dips below capacity. This is also what creates the window
+      # the expand/contract rule exists for -- old and new code, one schema, at
+      # the same time. It is not a side effect to be minimised; it is the thing
+      # to design the schema around.
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vinea.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: api
+  template:
+    metadata:
+      labels:
+        {{- include "vinea.labels" . | nindent 8 }}
+        app.kubernetes.io/component: api
+    spec:
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: api
+          image: {{ include "vinea.appImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "vinea.securityContext" . | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.api.port }}
+          {{- include "vinea.env" . | nindent 10 }}
+          # Liveness asks "is this process answering?" -- /health returns 200 even
+          # with the database gone, deliberately. Pointing liveness at a
+          # database-dependent endpoint turns a Postgres outage into a cluster-wide
+          # crash loop: every pod fails, every pod restarts, none of it helps.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Readiness asks "can this pod serve?" -- /ready returns 503 when the
+          # database is unreachable, so the pod leaves the Service's endpoints and
+          # comes back on its own when Postgres does. No restart, no data loss.
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          # Free-tier Postgres scales to zero, so the first query after idle pays
+          # a wake-up. A startup probe buys that time WITHOUT slackening liveness
+          # afterwards -- 30 x 2s = up to a minute to become ready the first time.
+          startupProbe:
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 2
+            failureThreshold: 30
+          resources:
+            {{- toYaml .Values.api.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vinea.fullname" . }}-api
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.api.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: {{ include "vinea.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: api

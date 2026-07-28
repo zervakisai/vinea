@@ -8,7 +8,13 @@ dependencies = [
     "pydantic>=2.7,<3",
     # Pinned to v1.x: Pydantic AI renamed result_type->output_type / result.data->result.output
     # before 1.0, so a v1 floor protects us from silent API drift mid-build.
-    "pydantic-ai>=1.0,<2",
+    # phase 13: `pydantic-ai` is a META-package that installs EVERY provider SDK
+    # plus Temporal -- measured in the image: temporalio 54 MB, botocore 30
+    # (Bedrock), fastavro 14, tokenizers 11, hf_xet 9.5, none of which this system
+    # can reach. `-slim` carries the framework; the provider SDKs are extras
+    # below, because VINEA_MODEL selects exactly ONE at run time and an image has
+    # no reason to carry the other four.
+    "pydantic-ai-slim>=1.0,<2",
     "pydantic-graph>=1.0,<2",   # used as the 3-agent graph in phase 3 (#10); pulled by pydantic-ai too
     "python-dotenv>=1.0,<2",
     # phase 6 (persistence): the schema mirrors the contracts (SQLModel), migrations
@@ -29,13 +35,38 @@ dependencies = [
     # never runs a model. uvicorn runs it; httpx (above) drives the TestClient.
     "fastapi>=0.115",
     "uvicorn>=0.30",
+    # phase 12 (evals): the eval gate wraps the deterministic oracles as pydantic-evals
+    # Evaluators; same major line as pydantic-ai/graph.
+    "pydantic-evals>=1.0,<2",
+]
+
+# phase 13 (containerize): the UI stack is an EXTRA, not a core dependency, purely
+# so the API/worker image does not have to carry it. Measured: pyarrow 119 MB +
+# pandas 48 + numpy 24 + streamlit 29 = 220 MB, which alone blows the image budget
+# for two processes that never import any of it (ADR-005 already forbids the UI
+# from being imported by anything upstream, so this split follows a line that was
+# already drawn).
+#
+# Extras are NOT installed by default and `tool.uv.default-extras` is not a real
+# setting (uv warns and ignores it). Dependency *groups* ARE installed by default,
+# so the `dev` group self-references `vinea[ui]` below -- which keeps a bare
+# `uv sync` behaving exactly as it did, including phase 11's `uv run streamlit run`.
+[project.optional-dependencies]
+# One extra per provider in config.py's _KEY_ENV. The Dockerfile takes
+# `--build-arg PROVIDER=` and installs exactly one (default: anthropic, matching
+# config.MODEL). Local dev installs all five via the dev group, so nothing about
+# the documented workflow changes.
+anthropic = ["pydantic-ai-slim[anthropic]>=1.0,<2"]
+openai    = ["pydantic-ai-slim[openai]>=1.0,<2"]
+google    = ["pydantic-ai-slim[google]>=1.0,<2"]
+groq      = ["pydantic-ai-slim[groq]>=1.0,<2"]
+mistral   = ["pydantic-ai-slim[mistral]>=1.0,<2"]
+
+ui = [
     # phase 11 (UI): a Streamlit dashboard that talks ONLY to the API (ADR-005). pandas
     # is for the charts' dataframes — a UI-layer dep; the core stays pandas-free.
     "streamlit>=1.40",
     "pandas>=2.0",
-    # phase 12 (evals): the eval gate wraps the deterministic oracles as pydantic-evals
-    # Evaluators; same major line as pydantic-ai/graph.
-    "pydantic-evals>=1.0,<2",
 ]
 
 [project.scripts]
@@ -46,6 +77,9 @@ vinea = "vinea.cli:main"
 dev = [
     "pytest>=8,<9",
     "ruff>=0.8",
+    # Self-reference to the ui extra so a bare `uv sync` still installs Streamlit:
+    # dev groups ARE installed by default, extras are not.
+    "vinea[ui,anthropic,openai,google,groq,mistral]",
 ]
 
 [build-system]
@@ -67,9 +101,9 @@ filterwarnings = [
 ]
 
 [tool.ruff]
-# 120, not 110: Vinea's the core (phases 1–4) was hand-written wider, and reflowing it
-# to satisfy a linter added later would be churn on working code for no reader's
-# benefit. New code stays comfortably inside it.
+# 120, not 110: the hand-written core (phases 1-4) was written wider, and reflowing
+# it to satisfy a linter adopted later would be churn on working code for no
+# reader's benefit. New code stays comfortably inside it.
 line-length = 120
 target-version = "py311"
 
@@ -89,10 +123,10 @@ extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "f
 # the one place you least want one. F/B still apply.
 "migrations/versions/*" = ["E501", "UP007", "UP035", "I001"]
 
-# The phases 1–4 project (the core) was hand-written before ruff was adopted (phase 6).
-# These files are the submitted code; reflowing them to satisfy a linter added
-# afterwards is churn on working code no reader benefits from. New the later phases code
-# is held to the full ruleset. graph.py's imports intentionally follow a
+# The core (phases 1-4) was hand-written before ruff was adopted in phase 6.
+# Reflowing it to satisfy a linter added afterwards is churn on working code no
+# reader benefits from, so it keeps a narrow exemption. Everything written from
+# phase 6 on is held to the full ruleset. graph.py's imports intentionally follow a
 # warnings filter (the class-based Graph API), which ruff can't model; ingest's
 # zip pairs a list with its own tail, so strict= would be wrong, not missing.
 "src/vinea/agents.py" = ["E501"]
