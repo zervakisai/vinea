@@ -17,6 +17,9 @@ dependencies = [
     "sqlmodel>=0.0.24",
     "alembic>=1.13",
     "psycopg[binary]>=3.2",
+    # phase 7 (live data): the Open-Meteo adapter is built on httpx directly (not the
+    # SDK) so the fail-open ladder later owns the deadline and the cache.
+    "httpx>=0.28",
 ]
 
 [project.scripts]

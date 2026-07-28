@@ -20,7 +20,6 @@ from pathlib import Path
 from . import config
 from .contracts import DailyFarmAdvisory, FarmFeatures
 from .graph import run_advisory_sync
-from .ingest import load_weather
 from .pipeline import run_pipeline
 
 _KEY_ENV = {
@@ -92,9 +91,38 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     p.add_argument("--history", default=None, help="override path to the last-30d CSV")
     p.add_argument("--forecast", default=None, help="override path to the next-7d CSV")
     p.add_argument("--run-date", default=None, help="YYYY-MM-DD; 'today' the advisory is for (default: today)")
+    p.add_argument("--source", choices=("csv", "api"), default="csv", help="where weather comes from")
+    p.add_argument("--latitude", type=float, default=-34.75, help="latitude for --source api")
+    p.add_argument("--longitude", type=float, default=138.6, help="longitude for --source api")
     p.add_argument("--features-only", action="store_true", help="deterministic features only (no LLM)")
     p.add_argument("--json", action="store_true", help="dump JSON instead of the human summary")
     return p.parse_args(argv)
+
+
+def _resolve_source(args: argparse.Namespace, data_dir: Path, run_date: date):
+    """Resolve --source to (history, forecast, quality). The one place the CLI
+    branches on source; everything after -- the degrade decision, feature
+    building, the whole graph -- is source-blind. A third source would touch
+    this function and nothing else."""
+    if args.source == "api":
+        from .sources.open_meteo import OpenMeteoSource
+
+        result = OpenMeteoSource().load(
+            latitude=args.latitude,
+            longitude=args.longitude,
+            history_days=30,
+            forecast_days=7,
+            run_date=run_date,
+        )
+    else:
+        from .sources.csv_source import CsvSource
+
+        history = Path(args.history) if args.history else _find_csv(data_dir, "last-30d")
+        forecast = Path(args.forecast) if args.forecast else _find_csv(data_dir, "next-7d")
+        result = CsvSource(
+            history, forecast, staleness_threshold_hours=config.STALENESS_THRESHOLD_HOURS
+        ).load(run_date=run_date)
+    return result.history, result.forecast, result.quality
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -103,14 +131,13 @@ def main(argv: list[str] | None = None) -> int:
     run_date = date.fromisoformat(args.run_date) if args.run_date else date.today()
 
     try:
-        history = Path(args.history) if args.history else _find_csv(data_dir, "last-30d")
-        forecast = Path(args.forecast) if args.forecast else _find_csv(data_dir, "next-7d")
-        hist, fc, dq = load_weather(
-            history, forecast, run_date, staleness_threshold_hours=config.STALENESS_THRESHOLD_HOURS
-        )
+        hist, fc, dq = _resolve_source(args, data_dir, run_date)
     except FileNotFoundError as exc:
         print(f"error: {exc}", file=sys.stderr)
         print("hint: place the two CSVs in ./data/ or pass --data-dir / --history / --forecast", file=sys.stderr)
+        return 2
+    except Exception as exc:  # a live source can fail on network / API error
+        print(f"error fetching weather from --source {args.source}: {exc}", file=sys.stderr)
         return 2
 
     # No key (or explicit flag) -> deterministic features only.

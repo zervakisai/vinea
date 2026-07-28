@@ -366,3 +366,62 @@ def test_forecast_and_history_for_the_same_hour_coexist(db_session):
     assert {r.temp_c for r in rows} == {24.0, 26.5}
     # Same hour, two rows, neither having overwritten the other.
     assert len({r.observed_at for r in rows}) == 1
+
+
+# --- phase 7 / S2.3: idempotent upsert of fetched observations -------------------
+
+
+def test_upsert_observations_is_idempotent_on_the_natural_key(db_session):
+    """Re-fetching an overlapping window must not duplicate rows.
+
+    A 30-day history re-fetched daily overlaps 29 days with yesterday's pull.
+    Without idempotency that's thousands of duplicate rows a week; with it, the
+    second write refreshes in place.
+    """
+    from vinea.sources.persist import upsert_observations
+
+    rows = [
+        WeatherRow(timestamp=datetime(2025, 2, 9, h, 0), temp_c=20.0 + h, et0_mm=0.3)
+        for h in range(24)
+    ]
+    n1 = upsert_observations(
+        db_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
+    )
+    n2 = upsert_observations(
+        db_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
+    )
+    assert n1 == 24 and n2 == 24  # both writes "wrote" 24, but...
+
+    total = db_session.exec(
+        select(WeatherObservation).where(
+            WeatherObservation.tenant == TENANT, WeatherObservation.kind == "history"
+        )
+    ).all()
+    assert len(total) == 24, "the second fetch must not have created a second copy"
+
+
+def test_upsert_refreshes_a_revised_reading_in_place(db_session):
+    """ERA5 revises values as more data arrives; the newer number should win."""
+    from vinea.sources.persist import upsert_observations
+
+    stamp = datetime(2025, 2, 9, 12, 0)
+    upsert_observations(
+        db_session,
+        [WeatherRow(timestamp=stamp, temp_c=20.0)],
+        tenant=TENANT,
+        location=LOCATION,
+        kind="history",
+        source="open_meteo",
+    )
+    upsert_observations(
+        db_session,
+        [WeatherRow(timestamp=stamp, temp_c=21.5)],  # revised
+        tenant=TENANT,
+        location=LOCATION,
+        kind="history",
+        source="open_meteo",
+    )
+    row = db_session.exec(
+        select(WeatherObservation).where(WeatherObservation.observed_at == stamp.replace(tzinfo=None))
+    ).one()
+    assert row.temp_c == pytest.approx(21.5)

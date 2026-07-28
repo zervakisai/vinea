@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import csv
 import math
+from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from pathlib import Path
 
@@ -261,3 +262,77 @@ def load_weather(
         notes=h_notes + f_notes + s_notes,
     )
     return h_rows, f_rows, dq
+
+
+# ---------------------------------------------------------------------------
+# The seam (phase 7 / S2.0): one quality assessment, shared by every source
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class WeatherLoadResult:
+    """History + forecast + the quality verdict, from any source.
+
+    The return type of the `WeatherSource` seam (sources/base.py). A source's
+    only job is to produce `WeatherRow`s; whether the day is stale, gappy, or
+    missing cells is not its to decide -- `assemble_load_result` decides that,
+    the same way for every source, which is the whole point of ADR-002.
+    """
+
+    history: list[WeatherRow]
+    forecast: list[WeatherRow]
+    quality: DataQuality
+
+
+def _count_missing(rows: list[WeatherRow], fields: tuple[str, ...]) -> int:
+    return sum(1 for r in rows for name in fields if getattr(r, name) is None)
+
+
+def assemble_load_result(
+    history: list[WeatherRow],
+    forecast: list[WeatherRow],
+    run_date: date,
+    *,
+    staleness_threshold_hours: int = 48,
+    rows_dropped: int = 0,
+    extra_notes: tuple[str, ...] = (),
+) -> WeatherLoadResult:
+    """Assess already-loaded rows for quality and wrap them in a result.
+
+    The shared assessment path a live source (Open-Meteo) ends with, computing
+    gaps, staleness, and missing-cell penalties from in-memory rows with the
+    *same* helpers `load_weather` uses for CSVs (`_detect_gaps`,
+    `_assess_staleness`, `DataQuality`). `rows_dropped` is 0 for an API source
+    (no parse step drops rows); `extra_notes` is where a source labels itself
+    (e.g. "open-meteo has no spray index").
+    """
+    history = sorted(history, key=lambda r: r.timestamp)
+    forecast = sorted(forecast, key=lambda r: r.timestamp)
+
+    nan_cells = _count_missing(history, _NUMERIC_FIELDS) + _count_missing(forecast, _NUMERIC_FIELDS)
+    spray_critical = _count_missing(history, SPRAY_CRITICAL_FIELDS) + _count_missing(
+        forecast, SPRAY_CRITICAL_FIELDS
+    )
+    h_gap, h_maxgap = _detect_gaps([r.timestamp for r in history])
+    f_gap, f_maxgap = _detect_gaps([r.timestamp for r in forecast])
+
+    is_stale, staleness_h, covers_tomorrow, s_notes = _assess_staleness(
+        history, forecast, run_date, staleness_threshold_hours
+    )
+
+    return WeatherLoadResult(
+        history=history,
+        forecast=forecast,
+        quality=DataQuality(
+            rows_loaded=len(history) + len(forecast),
+            rows_dropped=rows_dropped,
+            gap_count=h_gap + f_gap,
+            max_gap_hours=max(h_maxgap, f_maxgap),
+            nan_cells=nan_cells,
+            spray_critical_nan_cells=spray_critical,
+            is_stale=is_stale,
+            staleness_hours=staleness_h,
+            forecast_covers_tomorrow=covers_tomorrow,
+            notes=list(extra_notes) + s_notes,
+        ),
+    )
