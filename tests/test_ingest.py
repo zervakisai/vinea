@@ -108,6 +108,6 @@ def test_stale_series_flagged_isolated():
 
 def test_bad_input_flows_end_to_end():
     hist, fc, dq = load_weather(FIX / "fixture_nan.csv", FIX / "fixture_clean.csv", RUN_DATE)
-    advisory = run_pipeline(hist, fc, dq, RUN_DATE)
-    assert advisory.data_quality.nan_cells > 0
-    assert advisory.date == date(2026, 7, 29)
+    features = run_pipeline(hist, fc, dq, RUN_DATE)
+    assert features.data_quality.nan_cells > 0
+    assert features.target_date == date(2026, 7, 29)
