@@ -69,7 +69,7 @@ def test_empty_cells_coerced_to_none_and_penalized():
 
 def test_inf_treated_as_missing():
     # 'inf' must not survive as a float that poisons sums; it becomes None like NaN.
-    import csv, tempfile
+    import tempfile
 
     p = Path(tempfile.mkdtemp()) / "inf.csv"
     p.write_text(

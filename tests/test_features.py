@@ -21,7 +21,6 @@ from vinea.features import (
     build_irrigation_features,
     classify_delta_t,
     classify_wind,
-    detect_spray_windows,
     spray_features_for_tomorrow,
 )
 from vinea.ingest import WeatherRow, load_weather

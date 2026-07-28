@@ -27,7 +27,6 @@ from .contracts import (
 from .deps import Deps
 from .ingest import DataQuality
 
-
 # --- agent deps: crop config + the day's features (so validators can ground-check) ---
 
 @dataclass

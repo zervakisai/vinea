@@ -29,7 +29,6 @@ from .contracts import (
 from .deps import Deps
 from .ingest import DataQuality, WeatherRow
 
-
 # --- irrigation: ETc + running water balance (FAO-56) --------------------------
 
 def build_irrigation_features(

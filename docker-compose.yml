@@ -1,0 +1,44 @@
+# The app database (phase 6). One service for now; phase 9 adds Langfuse alongside it.
+#
+#   docker compose up -d postgres
+#
+# Host port is 55433, not 5432, on purpose: a system/Homebrew Postgres already
+# holding 5432 would shadow this container, and `psql` would connect to the
+# wrong server while the container sits there healthy and unreachable. 55433
+# (not 55432) also stays clear of a sibling project's Postgres.
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: vinea-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vinea}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vinea}
+      POSTGRES_DB: ${POSTGRES_DB:-vinea}
+      # EU data residency is a deployment concern, not a code path (ADR-001 and
+      # DESIGN.md B1's "region as a config value on the tenant record"). Locally
+      # this is just a container; in production this instance lives in an EU
+      # region and `grower_config.region` records which one each tenant is bound to.
+      TZ: UTC
+      PGTZ: UTC
+    ports:
+      - "${POSTGRES_HOST_PORT:-55433}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      # NOT `pg_isready -U vinea -d vinea`, which is the version everyone copies
+      # and does not mean what it looks like it means. pg_isready never
+      # authenticates -- it sends a startup packet and reports whether the server
+      # answered, so `pg_isready -U bogus -d bogus` still exits 0. `psql -c
+      # 'SELECT 1'` actually connects, authenticates, and runs a query, so it
+      # fails when the role or database is missing -- which is what a dependent
+      # waiting on "you can work now" actually needs.
+      test: ["CMD-SHELL", "psql -U ${POSTGRES_USER:-vinea} -d ${POSTGRES_DB:-vinea} -c 'SELECT 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

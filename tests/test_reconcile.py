@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from pathlib import Path
 
 from vinea.contracts import IrrigationAdvice, SprayAdvice, SprayWindow
