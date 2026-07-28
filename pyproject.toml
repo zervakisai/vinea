@@ -32,3 +32,7 @@ packages = ["src/vinea"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
+filterwarnings = [
+    # We pin pydantic-graph<2 and knowingly use the class-based Graph API (see graph.py docstring).
+    "ignore:Importing .Graph. from .pydantic_graph. is deprecated",
+]

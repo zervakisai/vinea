@@ -14,13 +14,12 @@ and a typed Enum for limiting_factors are deferred.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from .ingest import DataQuality, WeatherRow
+from .ingest import DataQuality
 
 # --- shared enums --------------------------------------------------------------
 
@@ -115,12 +114,25 @@ class DailyFarmAdvisory(BaseModel):
     spray: SprayAdvice
     summary: str = Field(description="grower-facing, plain language")
     conflicts_resolved: list[str] = Field(default_factory=list)
+    overall_confidence: float = Field(ge=0, le=1, description="reconciled 0..1 confidence")
 
     @model_validator(mode="after")
     def _dates_align(self) -> DailyFarmAdvisory:
         if self.irrigation.target_date != self.date or self.spray.target_date != self.date:
             raise ValueError("child advice target_date must equal advisory date")
         return self
+
+
+class Reconciliation(BaseModel):
+    """The Coordinator LLM's output — ONLY the reconciliation fields. The two sub-advices are
+    re-attached VERBATIM in code (agents.run_coordinator_agent), so the LLM never has to echo
+    two nested objects and they cannot drift."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    summary: str = Field(description="grower-facing, plain language, sequenced day")
+    conflicts_resolved: list[str] = Field(default_factory=list)
+    overall_confidence: float = Field(ge=0, le=1, description="reconciled 0..1 confidence")
 
 
 # --- deterministic feature types (filled by the FeatureBuilder; read by agents) -
@@ -192,17 +204,3 @@ class FarmFeatures(BaseModel):
     data_quality: DataQuality
     irrigation: IrrigationFeatures
     spray: SprayFeatures
-
-
-@dataclass
-class GraphState:
-    """Mutable shared object pydantic-graph will pass as `GraphRunContext.state` (phase 3 #10).
-    Each node fills its slot; defaults None so the graph's progress is visible/testable."""
-
-    history: list[WeatherRow]
-    forecast: list[WeatherRow]
-    run_date: date
-    features: FarmFeatures | None = None
-    irrigation: IrrigationAdvice | None = None
-    spray: SprayAdvice | None = None
-    advisory: DailyFarmAdvisory | None = None

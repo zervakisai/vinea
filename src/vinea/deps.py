@@ -22,6 +22,8 @@ from dataclasses import dataclass
 @dataclass(frozen=True, slots=True)
 class Deps:
     crop: str = "wine grapes (Vitis vinifera)"
+    irrigation_method: str = "drip"        # drip wets the root zone, not the canopy (reconcile)
+    spray_sensitivity: str = "very high (powdery/downy mildew programme all summer)"
 
     # --- Irrigation (FAO-56) ---
     kc: float = 0.70                       # mid-season crop coefficient (FAO-56 Table 12, wine grapes)

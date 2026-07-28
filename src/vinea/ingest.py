@@ -47,6 +47,7 @@ _NUMERIC_FIELDS = (
     "vpd_kpa",
     "delta_t_c",
     "wind_dir_deg",
+    "ghi_wm2",
 )
 
 # Fields where a missing value means the hour is physically NOT sprayable (never guessed).
@@ -75,9 +76,9 @@ class WeatherRow(BaseModel):
     vpd_kpa: float | None = Field(default=None, alias="VPD (kPa)")
     delta_t_c: float | None = Field(default=None, alias="Delta T (°C)")
     wind_dir_deg: float | None = Field(default=None, alias="Wind Direction (°)")
-    # TODO(phase 2+): Pressure (hPa), Cloud Cover (%), Snowfall (mm/h),
-    #            Solar Irradiance (GHI) (W/m2) are parsed-but-unused (dropped via
-    #            extra='ignore') — intentionally cut, not forgotten.
+    ghi_wm2: float | None = Field(default=None, alias="Solar Irradiance (GHI) (W/m2)")  # phase 3: daylight bounds
+    # TODO(phase 4+): Pressure (hPa), Cloud Cover (%), Snowfall (mm/h) are parsed-but-unused
+    #            (dropped via extra='ignore') — intentionally cut, not forgotten.
 
     @field_validator(*_NUMERIC_FIELDS, mode="before")
     @classmethod

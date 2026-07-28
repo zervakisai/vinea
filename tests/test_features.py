@@ -224,9 +224,9 @@ def test_daily_advisory_date_alignment():
     irr = _valid_irrigation()
     spr = SprayAdvice(target_date=TOMORROW, can_spray_tomorrow=False,
                       limiting_factors=["all unsuitable"], confidence=0.5, rationale="r")
-    DailyFarmAdvisory(date=TOMORROW, irrigation=irr, spray=spr, summary="s")  # ok
+    DailyFarmAdvisory(date=TOMORROW, irrigation=irr, spray=spr, summary="s", overall_confidence=0.7)  # ok
     with pytest.raises(ValidationError):
-        DailyFarmAdvisory(date=date(2026, 7, 1), irrigation=irr, spray=spr, summary="s")
+        DailyFarmAdvisory(date=date(2026, 7, 1), irrigation=irr, spray=spr, summary="s", overall_confidence=0.7)
 
 
 def test_units_in_schema():
