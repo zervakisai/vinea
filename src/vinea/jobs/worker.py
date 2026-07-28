@@ -37,11 +37,11 @@ from vinea.db.models import AdvisoryTask, GrowerConfig
 from vinea.db.session import make_engine
 from vinea.deps import WINE_GRAPES, Deps
 from vinea.features import build_features
-from vinea.graph import run_advisory_sync
 from vinea.ingest import WeatherLoadResult
 from vinea.jobs import metrics, queue
 from vinea.jobs.degraded import build_degraded_advisory
 from vinea.jobs.router import Route, route_for
+from vinea.obs.instrumented import run_advisory_instrumented
 from vinea.sources.csv_source import CsvSource
 
 
@@ -119,6 +119,9 @@ def process_one(
         )
 
         # --- the three-way choice, made from features + config, no model yet ---
+        trace_id: str | None = None
+        pre_correction: dict | None = None
+
         if not config.has_api_key(model):
             advisory = build_degraded_advisory(features, list(load_result.forecast), deps)
             route, degraded, model_id = "degraded_no_key", True, None
@@ -128,13 +131,17 @@ def process_one(
                 advisory = build_degraded_advisory(features, list(load_result.forecast), deps)
                 route, degraded, model_id = "skip_model", False, None
             else:
-                advisory = run_advisory_sync(
-                    list(load_result.history),
-                    list(load_result.forecast),
-                    load_result.quality,
-                    task.run_date,
-                    deps,
+                # The instrumented runner produces the same advisory as the plain
+                # graph, plus the trace id (S4.3) and the pre-correction attempt
+                # (S4.4). It's a no-op wrapper when tracing is off, so the worker
+                # always uses it -- pre-correction capture doesn't need OTel, and
+                # trace_id is simply None without it.
+                instrumented = run_advisory_instrumented(
+                    load_result, deps, model=model, tenant=task.tenant, run_date=task.run_date
                 )
+                advisory = instrumented.advisory
+                trace_id = instrumented.trace_id
+                pre_correction = instrumented.pre_correction_output
                 route, degraded, model_id = "large_model", False, model
 
         # Persist advisory and mark the task done in ONE transaction, so the two
@@ -147,6 +154,8 @@ def process_one(
             deps=deps,
             model_id=model_id,
             degraded=degraded,
+            trace_id=trace_id,
+            pre_correction_output=pre_correction,
         )
         queue.mark_done(session, task, advisory_id=saved.id)
         session.commit()

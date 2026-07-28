@@ -132,6 +132,8 @@ source = { editable = "." }
 dependencies = [
     { name = "alembic" },
     { name = "httpx" },
+    { name = "logfire" },
+    { name = "opentelemetry-exporter-otlp-proto-http" },
     { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "pydantic-ai" },
@@ -150,6 +152,8 @@ dev = [
 requires-dist = [
     { name = "alembic", specifier = ">=1.13" },
     { name = "httpx", specifier = ">=0.28" },
+    { name = "logfire", specifier = ">=4.0" },
+    { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.30" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.2" },
     { name = "pydantic", specifier = ">=2.7,<3" },
     { name = "pydantic-ai", specifier = ">=1.0,<2" },

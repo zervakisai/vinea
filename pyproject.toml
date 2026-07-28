@@ -20,6 +20,11 @@ dependencies = [
     # phase 7 (live data): the Open-Meteo adapter is built on httpx directly (not the
     # SDK) so the fail-open ladder later owns the deadline and the cache.
     "httpx>=0.28",
+    # phase 9 (observability): logfire owns the global OTel provider that pydantic-graph
+    # and pydantic-ai both emit spans into; the OTLP/HTTP exporter ships them to a
+    # self-hosted Langfuse (ADR-004). send_to_logfire stays False.
+    "logfire>=4.0",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
 ]
 
 [project.scripts]

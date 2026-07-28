@@ -40,5 +40,161 @@ services:
       start_period: 10s
     restart: unless-stopped
 
+  # --- phase 9 (observability): self-hosted Langfuse, behind a `langfuse` profile ---
+  # so the default `up` stays just the app database and the app never depends on
+  # Langfuse being present (ADR-004). Bring it up with:
+  #   docker compose --profile langfuse up -d
+  # Deliberately the smallest configuration that runs; a production deploy would
+  # externalise the datastores and put it in an EU region.
+  langfuse-web:
+    image: langfuse/langfuse:3
+    profiles: ["langfuse"]
+    container_name: vinea-langfuse
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_started
+      langfuse-minio:
+        condition: service_started
+      langfuse-redis:
+        condition: service_started
+    ports:
+      - "${LANGFUSE_HOST_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      SALT: ${LANGFUSE_SALT:-changeme-local-salt}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      NEXTAUTH_SECRET: ${LANGFUSE_NEXTAUTH_SECRET:-changeme-local-secret}
+      NEXTAUTH_URL: http://localhost:${LANGFUSE_HOST_PORT:-3000}
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      # Langfuse v3 needs BOTH the HTTP URL (above, for queries) and the
+      # native-protocol URL (below, for running its ClickHouse migrations on
+      # startup). Omitting the migration URL is a crash loop, not a warning.
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      # Single-node ClickHouse has no `default` cluster and no Keeper, so the
+      # migrations' `ON CLUSTER ... ReplicatedMergeTree` DDL fails. This flag
+      # makes Langfuse emit plain-node DDL instead.
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      REDIS_CONNECTION_STRING: redis://langfuse-redis:6379
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+      TELEMETRY_ENABLED: "false"
+      # Headless provisioning: creates an org, project, a login, and a fixed API
+      # keypair on first boot, so `up` yields a ready-to-use Langfuse with NO
+      # interactive UI signup. The keys are local-dev placeholders -- paste the
+      # same pair into .env as LANGFUSE_PUBLIC_KEY/SECRET_KEY and tracing exports
+      # immediately. Real deployments mint keys through the UI.
+      LANGFUSE_INIT_ORG_ID: vinea-local
+      LANGFUSE_INIT_PROJECT_ID: vinea
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: ${LANGFUSE_PUBLIC_KEY:-pk-lf-local-vinea}
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: ${LANGFUSE_SECRET_KEY:-sk-lf-local-vinea}
+      LANGFUSE_INIT_USER_EMAIL: ${LANGFUSE_INIT_USER_EMAIL:-dev@vinea.local}
+      LANGFUSE_INIT_USER_PASSWORD: ${LANGFUSE_INIT_USER_PASSWORD:-vinea-local-pw}
+    restart: unless-stopped
+
+  # Langfuse v3 splits ingestion (web, above) from processing (worker, here): the
+  # web endpoint accepts OTLP spans and queues them in Redis, and the WORKER
+  # drains that queue into ClickHouse. Without the worker, traces are accepted and
+  # then never appear. Same env as the web service.
+  langfuse-worker:
+    image: langfuse/langfuse-worker:3
+    profiles: ["langfuse"]
+    container_name: vinea-langfuse-worker
+    depends_on:
+      langfuse-db:
+        condition: service_healthy
+      langfuse-clickhouse:
+        condition: service_started
+      langfuse-minio:
+        condition: service_started
+      langfuse-redis:
+        condition: service_started
+    environment:
+      DATABASE_URL: postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      SALT: ${LANGFUSE_SALT:-changeme-local-salt}
+      ENCRYPTION_KEY: ${LANGFUSE_ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      CLICKHOUSE_URL: http://langfuse-clickhouse:8123
+      CLICKHOUSE_MIGRATION_URL: clickhouse://langfuse-clickhouse:9000
+      CLICKHOUSE_CLUSTER_ENABLED: "false"
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+      REDIS_CONNECTION_STRING: redis://langfuse-redis:6379
+      LANGFUSE_S3_EVENT_UPLOAD_BUCKET: langfuse
+      LANGFUSE_S3_EVENT_UPLOAD_ENDPOINT: http://langfuse-minio:9000
+      LANGFUSE_S3_EVENT_UPLOAD_ACCESS_KEY_ID: minio
+      LANGFUSE_S3_EVENT_UPLOAD_SECRET_ACCESS_KEY: miniosecret
+      LANGFUSE_S3_EVENT_UPLOAD_FORCE_PATH_STYLE: "true"
+      LANGFUSE_S3_EVENT_UPLOAD_REGION: auto
+    restart: unless-stopped
+
+  # One-shot: create the MinIO bucket Langfuse uploads events to. Without it the
+  # web service accepts spans and then 500s with "Failed to upload JSON to S3" --
+  # the bucket isn't auto-created. Runs, makes the bucket, exits.
+  langfuse-minio-init:
+    image: minio/mc
+    profiles: ["langfuse"]
+    depends_on:
+      langfuse-minio:
+        condition: service_started
+    entrypoint: >
+      sh -c "
+      until mc alias set local http://langfuse-minio:9000 minio miniosecret; do sleep 1; done &&
+      mc mb --ignore-existing local/langfuse &&
+      echo 'bucket langfuse ready'
+      "
+    restart: "no"
+
+  langfuse-db:
+    image: postgres:16
+    profiles: ["langfuse"]
+    environment:
+      POSTGRES_USER: langfuse
+      POSTGRES_PASSWORD: langfuse
+      POSTGRES_DB: langfuse
+    volumes:
+      - langfuse_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "psql -U langfuse -d langfuse -c 'SELECT 1' || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  langfuse-clickhouse:
+    image: clickhouse/clickhouse-server:24
+    profiles: ["langfuse"]
+    environment:
+      CLICKHOUSE_USER: clickhouse
+      CLICKHOUSE_PASSWORD: clickhouse
+    volumes:
+      - langfuse_clickhouse_data:/var/lib/clickhouse
+    restart: unless-stopped
+
+  langfuse-redis:
+    image: redis:7
+    profiles: ["langfuse"]
+    restart: unless-stopped
+
+  langfuse-minio:
+    image: minio/minio
+    profiles: ["langfuse"]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minio
+      MINIO_ROOT_PASSWORD: miniosecret
+    volumes:
+      - langfuse_minio_data:/data
+    restart: unless-stopped
+
 volumes:
   postgres_data:
+  langfuse_db_data:
+  langfuse_clickhouse_data:
+  langfuse_minio_data:

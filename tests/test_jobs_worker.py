@@ -168,6 +168,40 @@ def test_worker_runs_the_graph_on_a_borderline_day(committing_db, monkeypatch):
         assert row.model_id == "openai:gpt-4o-mini"  # provenance recorded
 
 
+def test_worker_stores_the_trace_id_when_tracing_is_configured(committing_db, monkeypatch):
+    """S4.3 through the queue: with tracing on, the large-model path stores a
+    trace_id on the advisory row -- the deep link S6 will follow."""
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
+
+    from vinea.jobs import router as router_mod
+    from vinea.obs import tracing
+
+    exporter = InMemorySpanExporter()
+    tracing.configure_tracing(processor=SimpleSpanProcessor(exporter), include_content=False)
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
+    monkeypatch.setattr(
+        worker, "route_for", lambda f: router_mod.RouteDecision(router_mod.Route.LARGE_MODEL, "x")
+    )
+
+    o_irr, o_spr, o_coord = _grounded_overrides(_features())
+    with _session(committing_db) as s:
+        queue.enqueue(s, tenant="acme", run_date=RUN_DATE)
+        s.commit()
+    with o_irr, o_spr, o_coord:
+        with _session(committing_db) as s:
+            task = queue.claim_one(s, worker_id="w1")
+            worker.process_one(s, task, model="openai:gpt-4o-mini")
+
+    with _session(committing_db) as s:
+        row = repository.get_advisory_row(s, tenant="acme", run_date=RUN_DATE)
+        assert row.trace_id is not None and len(row.trace_id) == 32
+        exported = {format(sp.context.trace_id, "032x") for sp in exporter.get_finished_spans()}
+        assert row.trace_id in exported  # the stored id ties to the real trace
+    exporter.clear()
+
+
 # --- failure path: the worker doesn't die, it re-enqueues -------------------
 
 
