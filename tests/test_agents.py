@@ -9,6 +9,8 @@ from pathlib import Path
 import pytest
 from pydantic_ai import capture_run_messages
 from pydantic_ai.exceptions import UnexpectedModelBehavior
+from pydantic_ai.messages import ModelResponse, ToolCallPart
+from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
 from vinea.agents import (
@@ -21,7 +23,7 @@ from vinea.agents import (
     run_spray_agent,
     spray_agent,
 )
-from vinea.contracts import DailyFarmAdvisory, IrrigationAdvice, SprayAdvice
+from vinea.contracts import DailyFarmAdvisory, IrrigationAdvice, SprayAdvice, SprayWindow
 from vinea.deps import WINE_GRAPES, Deps
 from vinea.features import build_features
 from vinea.graph import mermaid, run_advisory_sync
@@ -156,15 +158,40 @@ def test_coordinator_rejects_inflated_confidence():
             asyncio.run(run_coordinator_agent(WINE_GRAPES, irr, spr, ["fact"], f.data_quality, TOMORROW, RUN_DATE))
 
 
+def test_coordinator_reconciles_conflicting_inputs_via_function_model():
+    # FunctionModel: assert BOTH typed sub-advices reach the coordinator (reconcile, not concatenate),
+    # then script a reconciliation. A conflicting pair: irrigate AND a morning spray window.
+    f, irr, spr = _advices()
+    irr2 = irr.model_copy(update={"should_irrigate_tomorrow": True, "recommended_depth_mm": 50.0})
+    win = SprayWindow(start=datetime(2026, 7, 29, 6), end=datetime(2026, 7, 29, 9), reason="ideal AM")
+    spr2 = spr.model_copy(update={"can_spray_tomorrow": True, "recommended_windows": [win], "limiting_factors": []})
+
+    def fn(messages, info: AgentInfo) -> ModelResponse:
+        prompt = "".join(str(p) for m in messages for p in getattr(m, "parts", []))
+        assert "should_irrigate_tomorrow" in prompt and "can_spray_tomorrow" in prompt  # both inputs present
+        # Echo a value derived from EACH leg, proving the reconciliation used both (not constant text).
+        args = {"summary": f"Spray {win.start:%H:%M}–{win.end:%H:%M}, then irrigate {irr2.recommended_depth_mm}mm after sunset.",
+                "conflicts_resolved": ["sequenced morning spray before after-sunset irrigation"],
+                "overall_confidence": 0.5}
+        return ModelResponse(parts=[ToolCallPart(tool_name=info.output_tools[0].name, args=args)])
+
+    with coordinator_agent.override(model=FunctionModel(fn)):
+        adv = asyncio.run(run_coordinator_agent(WINE_GRAPES, irr2, spr2, ["overlap: none"], f.data_quality, TOMORROW, RUN_DATE))
+    assert adv.conflicts_resolved                       # reconciled, not concatenated
+    assert "06:00" in adv.summary and "50.0mm" in adv.summary  # both legs' values reached the output
+
+
 # --- full 3-agent graph end-to-end (no live model) -----------------------------
 
 def test_full_graph_end_to_end():
     hist, fc, dq = _loaded()
     f = _features()
     irr_args = _irr_args(f.irrigation.current_depletion_mm)
+    # legs clamp to the data-quality ceiling (shipped data is stale -> penalty 0.3 -> ceiling 0.7),
+    # so overall must be <= 0.7.
     rec_args = {"summary": "Irrigate after sunset; hold spraying tomorrow.",
                 "conflicts_resolved": ["plans independent: daytime spray vs after-sunset irrigation"],
-                "overall_confidence": 0.8}
+                "overall_confidence": 0.7}
     with irrigation_agent.override(model=TestModel(custom_output_args=irr_args)), \
          spray_agent.override(model=TestModel(custom_output_args=_spray_args())), \
          coordinator_agent.override(model=TestModel(custom_output_args=rec_args)):
@@ -173,7 +200,7 @@ def test_full_graph_end_to_end():
     assert advisory.date == TOMORROW
     assert advisory.irrigation.should_irrigate_tomorrow is True
     assert advisory.spray.can_spray_tomorrow is False
-    assert advisory.overall_confidence == 0.8
+    assert advisory.overall_confidence == 0.7
     assert advisory.conflicts_resolved  # coordinator reconciled, didn't just concatenate
 
 

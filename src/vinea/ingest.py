@@ -114,7 +114,7 @@ class DataQuality(BaseModel):
     @computed_field  # type: ignore[prop-decorator]
     @property
     def confidence_penalty(self) -> float:
-        """0..1 penalty. Agents apply it as: confidence *= (1 - confidence_penalty)."""
+        """0..1 penalty. Agents clamp confidence to a (1 - confidence_penalty) ceiling."""
         p = 0.0
         if self.rows_dropped:
             p += min(0.2, 0.02 * self.rows_dropped)

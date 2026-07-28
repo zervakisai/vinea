@@ -72,6 +72,23 @@ def test_forecast_rain_flips_trigger_off():
     assert build_irrigation_features(hist, wet, WINE_GRAPES, RUN_DATE).should_irrigate_trigger is False
 
 
+def test_single_row_etc():
+    feats = build_irrigation_features([mkrow(datetime(2026, 6, 1, 0), et0=0.83)], [], WINE_GRAPES, RUN_DATE)
+    assert feats.cumulative_etc_mm == pytest.approx(0.58, abs=0.005)  # 0.83 * 0.70, rounded to 2 dp
+
+
+def test_water_balance_worked_example():
+    # init depletion 0, Kc=0.70, effective-rain fraction 0.80; the max(0,...) clamp must fire on row 3.
+    hist = [
+        mkrow(datetime(2026, 6, 1, 0), et0=1.0, precip=0.0),   # etc 0.70 -> depletion 0.70
+        mkrow(datetime(2026, 6, 1, 1), et0=2.0, precip=0.0),   # etc 1.40 -> depletion 2.10
+        mkrow(datetime(2026, 6, 1, 2), et0=0.0, precip=5.0),   # eff_rain 4.0 -> max(0, 2.10-4.0)=0.0
+    ]
+    feats = build_irrigation_features(hist, [], WINE_GRAPES, RUN_DATE)
+    assert feats.cumulative_etc_mm == pytest.approx(2.10)
+    assert feats.current_depletion_mm == pytest.approx(0.0)   # clamp fired
+
+
 def test_missing_et0_skipped_not_zero_filled():
     hist = [mkrow(datetime(2026, 6, 1, 0), et0=2.0), mkrow(datetime(2026, 6, 1, 1), et0=None)]
     feats = build_irrigation_features(hist, [], WINE_GRAPES, RUN_DATE)

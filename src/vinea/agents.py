@@ -65,6 +65,26 @@ def _dq_note(dq: DataQuality) -> str:
     return "OK"
 
 
+def _degrade(confidence: float, dq: DataQuality) -> tuple[float, str | None]:
+    """Bound confidence by a deterministic data-quality CEILING (1 - confidence_penalty) and
+    surface a caveat. The ceiling means confidence can't outrun the evidence; the agent prompt
+    also asks the model to lower it, but this is the enforced backstop."""
+    ceiling = round(1.0 - dq.confidence_penalty, 3)
+    caveat = None
+    if dq.confidence_penalty > 0:  # caveat even when notes is empty (e.g. only non-critical NaN cells)
+        caveat = "data quality: " + ("; ".join(dq.notes) if dq.notes else f"confidence capped at {ceiling}")
+    return min(confidence, ceiling), caveat
+
+
+# TODO(robustness — consciously cut, and how I'd add them):
+#  - provider rate-limit retries/backoff, timeouts-as-deadlines, circuit breakers, cross-provider
+#    fallback live in phase 8 runtime, not this project.
+#  - property-based/fuzz tests + CSV schema-drift detection -> a separate hardening pass.
+#  - CI: pytest + ruff gate in GitHub Actions (cut per brief).
+#  - on retry-exhaustion the CLI degrades to deterministic features; a richer path would synthesize
+#    a low-confidence advisory directly from the features.
+
+
 # --- dynamic instruction renderers (pure fns so they're unit-testable) -----------
 
 def render_irrigation_context(d: IrrDeps) -> str:
@@ -274,13 +294,23 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
     deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
     res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=config.MODEL)
-    return res.output
+    out = res.output
+    conf, caveat = _degrade(out.confidence, dq)
+    return out.model_copy(update={
+        "confidence": conf,
+        "rationale": out.rationale + (f"\n[caveat — {caveat}]" if caveat else ""),
+    })
 
 
 async def run_spray_agent(crop: Deps, features: SprayFeatures, dq: DataQuality, target_date: date, run_date: date) -> SprayAdvice:
     deps = SprayDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
     res = await spray_agent.run(render_spray_input(features), deps=deps, model=config.MODEL)
-    return res.output
+    out = res.output
+    conf, caveat = _degrade(out.confidence, dq)
+    return out.model_copy(update={
+        "confidence": conf,
+        "limiting_factors": out.limiting_factors + ([caveat] if caveat else []),
+    })
 
 
 async def run_coordinator_agent(
@@ -293,9 +323,13 @@ async def run_coordinator_agent(
     )
     res = await coordinator_agent.run(render_coordinator_input(deps), deps=deps, model=config.MODEL)
     rec = res.output  # Reconciliation
+    conf, caveat = _degrade(rec.overall_confidence, dq)
+    # Enforce the invariant by construction: overall can't exceed the most confident leg.
+    conf = round(min(conf, max(irrigation.confidence, spray.confidence)), 3)
     # Re-attach the sub-advices VERBATIM in code -> they cannot drift, and the LLM never echoes them.
     return DailyFarmAdvisory(
         date=target_date, irrigation=irrigation, spray=spray,
-        summary=rec.summary, conflicts_resolved=rec.conflicts_resolved,
-        overall_confidence=rec.overall_confidence,
+        summary=rec.summary + (f"\n[caveat — {caveat}]" if caveat else ""),
+        conflicts_resolved=rec.conflicts_resolved + ([caveat] if caveat else []),
+        overall_confidence=conf,
     )
