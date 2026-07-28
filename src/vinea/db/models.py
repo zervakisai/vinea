@@ -433,3 +433,113 @@ class FeatureCache(SQLModel, table=True):
 
     features: dict = Field(sa_column=Column(JSONB, nullable=False))
     computed_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+
+
+# ---------------------------------------------------------------------------
+# phase 8: the queue. Not Redis -- see ADR-003.
+# ---------------------------------------------------------------------------
+
+
+class AdvisoryTask(SQLModel, table=True):
+    """One unit of overnight work: produce the advisory for (tenant, run_date).
+
+    This table *is* the queue. The claim in ADR-003 is that a Postgres table
+    plus `SELECT ... FOR UPDATE SKIP LOCKED` is a better fit here than Redis or
+    Celery -- zero new infrastructure, and the state we already have to persist
+    (which advisories exist, with what provenance) lives one JOIN away from the
+    work that produces them.
+
+    The natural key is `(tenant, run_date)`, the SAME key as `advisories`. That
+    is deliberate and load-bearing: enqueuing a night is idempotent (S3.2), so a
+    scheduler that fires twice, or a manual re-run, does not create a second
+    task. Combined with the advisory UPSERT on the same key, the whole pipeline
+    is re-runnable end to end.
+
+    Retry and timeout state lives here rather than in the worker because the
+    worker is stateless (ADR-003): everything needed to decide "try again, with
+    backoff" or "give up" is columns, so any worker can pick up where a dead one
+    left off.
+    """
+
+    __tablename__ = "advisory_tasks"
+    __table_args__ = (
+        UniqueConstraint("tenant", "run_date", name="uq_advisory_tasks_idempotency"),
+        # The claim query filters status='queued' and run_after<=now(), newest
+        # eligible first. A partial index on exactly that predicate keeps the
+        # claim cheap even when the table is mostly 'done' rows.
+        Index("ix_advisory_tasks_claim", "run_after", postgresql_where=text("status = 'queued'")),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'done', 'failed')",
+            name="ck_advisory_tasks_status",
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    tenant: str = Field(sa_column=Column(Text, nullable=False))
+    run_date: date = Field(sa_column=Column(Date, nullable=False))
+
+    # TEXT + CHECK, not a native ENUM: task status is a closed but *evolving* set
+    # (real systems grow 'cancelled', 'dead_letter'). A CHECK enforces the closed
+    # set exactly like an ENUM, but extending it is a one-line DROP/ADD CONSTRAINT,
+    # where a native ENUM's `ALTER TYPE ... ADD VALUE` can't run in a transaction
+    # and can never be removed.
+    status: str = Field(sa_column=Column(Text, nullable=False, server_default="queued"))
+
+    # Retry accounting. `attempts` counts *worker* attempts on the day -- NOT the
+    # SDK's per-call ModelRetry attempts, a different layer that must not be
+    # conflated (the double-retry footgun, S3.3). `max_attempts` is the worker's
+    # own give-up threshold.
+    attempts: int = Field(sa_column=Column(Integer, nullable=False, server_default="0"))
+    max_attempts: int = Field(sa_column=Column(Integer, nullable=False, server_default="3"))
+
+    # A re-enqueued task waits until `run_after` before it can be claimed again --
+    # exponential backoff lives here, as data, so it survives a worker crash.
+    run_after: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+
+    # ONE deadline for the whole day, set at creation and NEVER extended (S3.3).
+    # Checked on every attempt; once passed the task fails permanently regardless
+    # of remaining attempts, so one stuck day can't consume the night's budget a
+    # retry at a time.
+    deadline_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+
+    # Who holds the lease, and since when. `locked_at` is what a reaper uses to
+    # detect a task whose worker died mid-run (lease expired) and return it to
+    # the queue -- the state is in the row, so recovery needs no coordination.
+    locked_by: str | None = Field(default=None, sa_column=Column(Text))
+    locked_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    last_error: str | None = Field(default=None, sa_column=Column(Text))
+
+    advisory_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("advisories.id", ondelete="SET NULL")),
+    )
+    created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+
+
+class QueueDepthSample(SQLModel, table=True):
+    """A point-in-time snapshot of how deep the queue is. Metrics, in the DB.
+
+    DESIGN.md B1 argues you autoscale this fleet on queue depth, not CPU, because
+    the workers are I/O-bound on the model API and CPU sits idle right up until
+    the queue backs up. That argument is only actionable if queue depth is a
+    number you can *see* over time -- so the worker samples it into this table,
+    and S6's operator dashboard charts it. "Autoscale on queue depth" stops being
+    a slogan and becomes a line on a graph.
+
+    Arguably a cache (derivable by COUNT(*) over advisory_tasks at each instant)
+    -- but only if you never delete task rows, and a real system prunes completed
+    tasks. The samples are the *history* that survives that pruning, so they're
+    stored, not recomputed. ADR-001's test still applies: could you reconstruct
+    this from surviving inputs? Once tasks are pruned, no -- so it's a row.
+    """
+
+    __tablename__ = "queue_depth_samples"
+    __table_args__ = (Index("ix_queue_depth_samples_time", "sampled_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    sampled_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+    queued: int = Field(sa_column=Column(Integer, nullable=False))
+    running: int = Field(sa_column=Column(Integer, nullable=False))
+    failed: int = Field(sa_column=Column(Integer, nullable=False))
+    done: int = Field(sa_column=Column(Integer, nullable=False))

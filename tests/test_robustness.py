@@ -113,7 +113,7 @@ def test_cli_degrades_to_features_on_retry_exhaustion(monkeypatch, capsys):
     import vinea.config as config
     from vinea import cli
 
-    monkeypatch.setenv(cli._KEY_ENV.get(config.MODEL.split(":", 1)[0], "ANTHROPIC_API_KEY"), "dummy-not-used")
+    monkeypatch.setenv(config._KEY_ENV.get(config.MODEL.split(":", 1)[0], "ANTHROPIC_API_KEY"), "dummy-not-used")
     ungrounded = _irr_args(99999.0)  # never matches the real computed depletion
     with irrigation_agent.override(model=TestModel(custom_output_args=ungrounded)):
         rc = cli.main(["--run-date", "2026-07-28"])

@@ -29,3 +29,20 @@ MODEL: str = os.getenv("VINEA_MODEL", "anthropic:claude-sonnet-4-5")
 
 # Last-history timestamp older than this (relative to run_date) -> flag data as stale.
 STALENESS_THRESHOLD_HOURS: int = 48
+
+# Provider -> env var holding its key. The batch worker (phase 8) reads this to decide
+# whether it can run the model at all, or must fall back to the deterministic
+# (degraded) advisory. An unknown provider is attempted anyway.
+_KEY_ENV = {
+    "anthropic": "ANTHROPIC_API_KEY",
+    "openai": "OPENAI_API_KEY",
+    "google-gla": "GEMINI_API_KEY",
+    "groq": "GROQ_API_KEY",
+    "mistral": "MISTRAL_API_KEY",
+}
+
+
+def has_api_key(model: str = MODEL) -> bool:
+    """True if the provider key for `model` is set (or the provider is unknown)."""
+    env = _KEY_ENV.get(model.split(":", 1)[0])
+    return env is None or bool(os.getenv(env))

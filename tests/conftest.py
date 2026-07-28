@@ -88,3 +88,30 @@ def db_session(db_engine):
         session.close()
         transaction.rollback()
         connection.close()
+
+
+# The queue tests (phase 8) need something the rollback fixture can't give: real
+# COMMITs on separate connections. SKIP LOCKED is a claim about what two
+# concurrent *transactions* do to each other, so it cannot be observed inside one
+# transaction that never commits. `committing_db` yields the engine and guarantees
+# a clean slate by TRUNCATE before and after, so each test starts from an empty
+# queue and leaves nothing behind.
+_ALL_TABLES = (
+    "advisory_tasks, queue_depth_samples, eval_runs, annotations, "
+    "advisories, grower_config, weather_observations, feature_cache"
+)
+
+
+@pytest.fixture
+def committing_db(db_engine):
+    from sqlalchemy import text
+    from sqlmodel import Session
+
+    def _truncate():
+        with Session(db_engine) as s:
+            s.execute(text(f"TRUNCATE {_ALL_TABLES} RESTART IDENTITY CASCADE"))
+            s.commit()
+
+    _truncate()
+    yield db_engine
+    _truncate()

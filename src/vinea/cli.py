@@ -12,7 +12,6 @@ With no API key set, falls back to --features-only automatically (with a note).
 from __future__ import annotations
 
 import argparse
-import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -21,16 +20,6 @@ from . import config
 from .contracts import DailyFarmAdvisory, FarmFeatures
 from .graph import run_advisory_sync
 from .pipeline import run_pipeline
-
-_KEY_ENV = {
-    "anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY",
-    "google-gla": "GEMINI_API_KEY", "groq": "GROQ_API_KEY", "mistral": "MISTRAL_API_KEY",
-}
-
-
-def _has_api_key(model: str) -> bool:
-    env = _KEY_ENV.get(model.split(":", 1)[0])
-    return env is None or bool(os.getenv(env))  # unknown provider -> attempt anyway
 
 
 def _find_csv(data_dir: Path, marker: str) -> Path:
@@ -141,7 +130,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     # No key (or explicit flag) -> deterministic features only.
-    if args.features_only or not _has_api_key(config.MODEL):
+    if args.features_only or not config.has_api_key(config.MODEL):
         if not args.features_only:
             print(f"note: no API key for '{config.MODEL}' — showing deterministic features only "
                   f"(set the provider key or use --features-only to silence).", file=sys.stderr)
