@@ -25,6 +25,10 @@ dependencies = [
     # self-hosted Langfuse (ADR-004). send_to_logfire stays False.
     "logfire>=4.0",
     "opentelemetry-exporter-otlp-proto-http>=1.30",
+    # phase 10 (API): a thin FastAPI over the queue + store — it enqueues and reads, it
+    # never runs a model. uvicorn runs it; httpx (above) drives the TestClient.
+    "fastapi>=0.115",
+    "uvicorn>=0.30",
 ]
 
 [project.scripts]
@@ -64,6 +68,13 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom IS a function call in an argument default
+# -- Depends(...), Query(...), Header(...), Path(...). B008 flags that as a
+# mutable-default footgun, but these are immutable markers FastAPI reads at
+# startup, not mutable objects shared across calls.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Path", "fastapi.Header"]
 
 [tool.ruff.lint.per-file-ignores]
 # Alembic writes these; they're mechanical --autogenerate artifacts, and

@@ -1,0 +1,128 @@
+"""API response models. The existing contracts, plus the provenance around them.
+
+The advisory itself is `DailyFarmAdvisory` -- the same contract the graph produces,
+the repository stores, and the tests hand-check. The API does not define a second
+advisory shape; that would fork the contract the way a second mapping layer would
+(phase 6). What the API *does* add is a thin envelope for the things that live *beside*
+the advisory on the row -- trace_id, degraded, the prompt/model provenance --
+because a client viewing an advisory wants the deep link and the "was this
+degraded" badge, and those are about the advisory, not part of it (the same
+row-vs-contract split `get_advisory` and `get_advisory_row` make).
+"""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+
+from pydantic import BaseModel
+
+from vinea.contracts import DailyFarmAdvisory
+from vinea.db.models import Advisory, QueueDepthSample
+
+
+class EnqueueResponse(BaseModel):
+    """202 body for POST: the task was accepted, here's how to track it.
+
+    Deliberately NOT an advisory -- POST returns before the advisory exists,
+    because producing it is the worker's job. Returning a task handle rather than a
+    result is the API telling the truth about what just happened: work was queued,
+    not done.
+    """
+
+    task_id: int
+    tenant: str
+    run_date: date
+    status: str
+    already_queued: bool
+
+
+class AdvisoryEnvelope(BaseModel):
+    """An advisory plus the provenance beside it, for GET.
+
+    `advisory` is the untouched contract; the rest are the row's columns the UI
+    needs -- the degraded badge, the confidence numbers (promoted to columns in phase 6
+    for exactly this kind of read), and the trace_id deep link.
+    """
+
+    tenant: str
+    run_date: date
+    advisory: DailyFarmAdvisory
+    degraded: bool
+    trace_id: str | None
+    model_id: str | None
+    prompt_version: str | None
+    overall_confidence: float | None
+
+    @classmethod
+    def from_row(cls, row: Advisory, advisory: DailyFarmAdvisory) -> AdvisoryEnvelope:
+        return cls(
+            tenant=row.tenant,
+            run_date=row.run_date,
+            advisory=advisory,
+            degraded=row.degraded,
+            trace_id=row.trace_id,
+            model_id=row.model_id,
+            prompt_version=row.prompt_version,
+            overall_confidence=row.overall_confidence,
+        )
+
+
+class AdvisorySummary(BaseModel):
+    """One row in a history listing -- the headline, not the whole advisory.
+
+    History is a list view: a client wants dates, confidence, and flags to scan,
+    then fetches the full advisory for the one it cares about. Shipping every full
+    advisory in the list would be a lot of JSONB for a scroll.
+    """
+
+    tenant: str
+    run_date: date
+    target_date: date
+    degraded: bool
+    overall_confidence: float | None
+    trace_id: str | None
+
+    @classmethod
+    def from_row(cls, row: Advisory) -> AdvisorySummary:
+        return cls(
+            tenant=row.tenant,
+            run_date=row.run_date,
+            target_date=row.target_date,
+            degraded=row.degraded,
+            overall_confidence=row.overall_confidence,
+            trace_id=row.trace_id,
+        )
+
+
+class QueueDepthResponse(BaseModel):
+    """GET /ops/queue: the counts an operator (and an autoscaler) act on."""
+
+    queued: int
+    running: int
+    done: int
+    failed: int
+
+
+class QueueDepthPoint(BaseModel):
+    """One point on the queue-depth-over-time chart (S6.3)."""
+
+    sampled_at: datetime
+    queued: int
+    running: int
+    done: int
+    failed: int
+
+    @classmethod
+    def from_row(cls, row: QueueDepthSample) -> QueueDepthPoint:
+        return cls(
+            sampled_at=row.sampled_at,
+            queued=row.queued,
+            running=row.running,
+            done=row.done,
+            failed=row.failed,
+        )
+
+
+class HealthResponse(BaseModel):
+    status: str
+    database: str
