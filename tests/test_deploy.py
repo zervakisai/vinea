@@ -255,3 +255,37 @@ def test_the_gateway_rolls_when_its_config_changes():
     a gateway still serving the old configuration."""
     rendered = _render("gateway.enabled=true")
     assert "checksum/config:" in rendered
+
+
+# --------------------------------------------------------------------------- #
+# Retrieval is opt-in too (phase 15)                                           #
+# --------------------------------------------------------------------------- #
+
+
+@helm_required
+def test_the_default_deploy_ingests_no_corpus():
+    """Same claim as the gateway's, one phase later.
+
+    With `rag.enabled: false` no corpus reaches the database, `retrieve_for`
+    finds nothing, and the deployment is phase 14's. If this ever renders by
+    default, "retrieval changes nothing when off" has become "off is untested".
+    """
+    assert "component: corpus-ingest" not in _render()
+
+
+@helm_required
+def test_the_corpus_ingest_runs_after_the_migration_not_before():
+    """The two hooks point opposite ways, and the ordering is the reasoning.
+
+    The migration is `pre-upgrade`: code that expects a column the database lacks
+    is broken code serving traffic, so it must gate the release. The ingest is
+    `post-upgrade`: it writes rows into the table that migration just created,
+    and a missing corpus is not an outage -- retrieval fails open to silence and
+    the advisory is produced regardless.
+    """
+    rendered = _render("rag.enabled=true")
+    assert "helm.sh/hook: post-install,post-upgrade" in rendered
+    assert "component: corpus-ingest" in rendered
+    # Still exactly one pre-upgrade hook: the migration. If the ingest ever
+    # became one, a corpus problem would start blocking deploys.
+    assert rendered.count("helm.sh/hook: pre-install,pre-upgrade") == 1

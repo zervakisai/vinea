@@ -81,6 +81,27 @@ def _advisory_card(envelope: dict) -> None:
         st.caption(f"• {fact}")
 
     # S6.4: deep link to the trace, when there is one.
+    # phase 15: the sources, labelled precisely.
+    #
+    # "Shown to the model", not "used by the model". `advisory_citations` records
+    # what retrieval supplied; asking the model which sources it used would be a
+    # self-report, and phase 12 exists because self-report is not evidence. The
+    # weaker wording is the honest one, and putting the stronger wording on a
+    # grower's screen would be the phase's own failure mode.
+    citations = envelope.get("citations") or []
+    if citations:
+        st.subheader("Sources shown to the model")
+        st.caption(
+            "Passages from FAO Irrigation and Drainage Paper 56 (CC BY 4.0) that were "
+            "supplied as background. They explain the reasoning; every number above is "
+            "computed from this block's own weather and configuration."
+        )
+        by_leg: dict[str, list[str]] = {}
+        for citation in sorted(citations, key=lambda c: (c["leg"], c["rank"])):
+            by_leg.setdefault(citation["leg"], []).append(citation["locator"])
+        for leg, locators in by_leg.items():
+            st.caption(f"**{leg}** — " + " · ".join(locators))
+
     trace_id = envelope.get("trace_id")
     if trace_id:
         st.link_button("🔎 View trace in Langfuse", langfuse_trace_url(trace_id))

@@ -21,7 +21,7 @@ nothing else in the system ever sees it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from opentelemetry import trace
@@ -34,6 +34,7 @@ from vinea.gateway.ledger import RunCost, ledger_scope
 from vinea.graph import run_advisory_sync
 from vinea.ingest import WeatherLoadResult
 from vinea.obs.tracing import current_trace_id
+from vinea.rag.citations import RetrievedPassage, citation_scope
 
 
 @dataclass
@@ -47,6 +48,11 @@ class InstrumentedResult:
     # phase 14. All-NULL when no gateway is configured and no model was metered --
     # the row then says "unknown", which is what it is.
     cost: RunCost = RunCost(input_tokens=None, output_tokens=None, cost_usd=None, cache_hit=None)
+    # phase 15. The passages retrieval SHOWED the model, per leg. Empty when no
+    # corpus is ingested, which is the fail-open floor: no citations, never a weak
+    # one. Deliberately not "the sources the model used" -- that would be a
+    # self-report, and phase 12 exists because self-report is not evidence.
+    passages: list[RetrievedPassage] = field(default_factory=list)
 
 
 def _extract_pre_correction(messages: list) -> tuple[dict | None, bool]:
@@ -116,7 +122,7 @@ def run_advisory_instrumented(
         # inside `run_advisory_sync` because a ContextVar holding a *mutable*
         # object is copied by reference into the new task's context -- appends
         # from in there land on this object.
-        with ledger_scope() as ledger, capture_run_messages() as messages:
+        with ledger_scope() as ledger, citation_scope() as citations, capture_run_messages() as messages:
             advisory = run_advisory_sync(
                 list(load_result.history),
                 list(load_result.forecast),
@@ -126,6 +132,8 @@ def run_advisory_instrumented(
             )
 
         cost = RunCost.from_ledger(ledger)
+        passages = list(citations.passages)
+        span.set_attribute("vinea.retrieved_passages", len(passages))
         pre_correction, retried = _extract_pre_correction(list(messages))
         span.set_attribute("vinea.retried", retried)
         # On the span as well as the row. The row is what an operator queries a
@@ -146,4 +154,5 @@ def run_advisory_instrumented(
         pre_correction_output=pre_correction,
         retried=retried,
         cost=cost,
+        passages=passages,
     )

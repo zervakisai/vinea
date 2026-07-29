@@ -164,7 +164,8 @@ def get_advisory(
             detail=f"No advisory for tenant '{tenant}' on {run_date.isoformat()}.",
         )
     advisory = repository.get_advisory(session, tenant=tenant, run_date=run_date)
-    return AdvisoryEnvelope.from_row(row, advisory)
+    citations = repository.get_citations(session, advisory_id=row.id)
+    return AdvisoryEnvelope.from_row(row, advisory, citations)
 
 
 @app.get("/advisories/{tenant}", response_model=list[AdvisorySummary])

@@ -1,0 +1,63 @@
+{{- if .Values.rag.enabled }}
+# Ingest the committed corpus into corpus_chunks (phase 15, ADR-008).
+#
+# A post-install/post-upgrade hook, where the migration is a PRE-upgrade one, and
+# the difference is which way each failure should point:
+#
+#   * The migration must succeed BEFORE new pods serve, because code that expects
+#     a column the database lacks is broken code serving traffic.
+#   * The ingest must run AFTER, because it writes rows into a table the migration
+#     just created, and because retrieval failing is not an outage. With no corpus
+#     ingested, `retrieve_for` returns nothing and advisories are produced exactly
+#     as they were in phase 14 -- fewer citations, same advice.
+#
+# So this hook does not gate the release. It is `hook-failed` tolerant by having
+# no `helm.sh/hook-delete-policy: hook-succeeded`, so a failed ingest leaves its
+# Job and its logs behind for someone to read -- which matters precisely because
+# nothing else will page about it.
+#
+# The image must be built with `--build-arg RAG=1`; without model2vec this Job
+# exits non-zero with a clear message rather than silently ingesting nothing.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "vinea.fullname" . }}-corpus-ingest
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: corpus-ingest
+  annotations:
+    helm.sh/hook: post-install,post-upgrade
+    helm.sh/hook-weight: "5"
+    helm.sh/hook-delete-policy: before-hook-creation
+spec:
+  # Idempotent by construction: ingest UPSERTs on (source, chunk_id), so a retry
+  # overwrites rather than duplicating. backoffLimit can therefore be > 0 here,
+  # unlike the migration Job where a retried DDL is a different kind of question.
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        {{- include "vinea.labels" . | nindent 8 }}
+        app.kubernetes.io/component: corpus-ingest
+    spec:
+      restartPolicy: Never
+      securityContext:
+        fsGroup: 1001
+      containers:
+        - name: corpus-ingest
+          image: {{ include "vinea.appImage" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- include "vinea.securityContext" . | nindent 12 }}
+          command: ["python", "-m", "vinea.rag", "ingest"]
+          {{- include "vinea.env" . | nindent 10 }}
+          resources:
+            {{- toYaml .Values.rag.resources | nindent 12 }}
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}
+{{- end }}

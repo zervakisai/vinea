@@ -18,7 +18,12 @@ jobs:
     # docker-compose is only a host-collision workaround, not needed in CI).
     services:
       postgres:
-        image: postgres:16
+        # pgvector's image, not `postgres:16` (phase 15). Same server plus the
+        # vector extension files; without them migration c73a51e8d4b2's
+        # `CREATE EXTENSION vector` fails and every db-marked test errors. The
+        # compose stack and the kind fixture moved with it -- one image, three
+        # places, and the failure mode if they drift is a red CI that is right.
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: vinea
           POSTGRES_PASSWORD: vinea

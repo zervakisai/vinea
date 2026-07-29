@@ -11,7 +11,7 @@ The agents NEVER recompute physics — they reason over the FeatureBuilder's cle
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
 from pydantic_ai import Agent, ModelRetry, RunContext
@@ -29,6 +29,7 @@ from .gateway import resolve_model
 from .ingest import DataQuality
 from .prompts import defaults
 from .prompts import registry as prompts
+from .rag.retrieve import render_passages, retrieve_for
 
 
 def _prompt_label() -> str:
@@ -49,6 +50,10 @@ class IrrDeps:
     data_quality: DataQuality
     target_date: date
     run_date: date
+    # phase 15. Reference passages from FAO-56, for EXPLANATION only. Default
+    # empty, so every existing caller and every test is unaffected and the agent
+    # behaves exactly as it did in phase 14 when nothing was retrieved.
+    passages: list = field(default_factory=list)
 
 
 @dataclass
@@ -58,6 +63,7 @@ class SprayDeps:
     data_quality: DataQuality
     target_date: date
     run_date: date
+    passages: list = field(default_factory=list)
 
 
 @dataclass
@@ -270,9 +276,29 @@ def _irr_instructions(ctx: RunContext[IrrDeps]) -> str:
     return render_irrigation_context(ctx.deps)
 
 
+# phase 15: retrieved reference material, as a SEPARATE instruction block.
+#
+# Separate rather than concatenated into the context above, and the separation is
+# the safeguard. `render_irrigation_context` is where the computed features live
+# -- the depletion, the RAW, the numbers the advisory must report. Splicing FAO-56
+# prose into that same block invites the model to read the two as one pool of
+# facts, which is precisely how a Kc from a retrieved table ends up in an
+# arithmetic the deterministic core already did.
+#
+# Two blocks, and the reference one says in the imperative that it is background.
+@irrigation_agent.instructions
+def _irr_references(ctx: RunContext[IrrDeps]) -> str:
+    return render_passages(ctx.deps.passages)
+
+
 @spray_agent.instructions
 def _spray_instructions(ctx: RunContext[SprayDeps]) -> str:
     return render_spray_context(ctx.deps)
+
+
+@spray_agent.instructions
+def _spray_references(ctx: RunContext[SprayDeps]) -> str:
+    return render_passages(ctx.deps.passages)
 
 
 @coordinator_agent.instructions
@@ -331,8 +357,32 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 # resolve_model() is phase 14's gateway seam: config.MODEL when no gateway is configured,
 # a metered (and optionally failover-wrapped) Model when one is. The agents never learn which.
 
+# The retrieval queries, phrased in FAO-56's own vocabulary rather than a
+# grower's. The lexical half of the hybrid matches tokens, and "readily available
+# water" and "management allowed depletion" are the terms the document indexes on
+# -- "should I water tomorrow" retrieves nothing useful from a technical manual.
+#
+# Static strings, not built from the features. Interpolating tonight's depletion
+# into the query would make retrieval vary per tenant per night for no gain, and
+# would quietly turn a cacheable lookup into 365 distinct ones.
+_IRR_QUERY = (
+    "soil water balance root zone depletion, total available water TAW, "
+    "readily available water RAW, management allowed depletion fraction, "
+    "crop coefficient Kc and irrigation scheduling to avoid crop water stress"
+)
+_SPRAY_QUERY = (
+    "wind speed measurement and effect on evaporation, humidity and vapour "
+    "pressure deficit, temperature and dew point, weather conditions affecting "
+    "field operations and spray droplet evaporation"
+)
+
+
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
-    deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
+    # Retrieval is strictly downstream of the features -- they are already
+    # computed and passed in. Nothing retrieved can reach build_features, which is
+    # the phase-15 invariant expressed as call order rather than as a comment.
+    passages = retrieve_for("irrigation", _IRR_QUERY)
+    deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date, passages=passages)
     res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=resolve_model())
     out = res.output
     conf, caveat = _degrade(out.confidence, dq)
@@ -343,7 +393,8 @@ async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: Dat
 
 
 async def run_spray_agent(crop: Deps, features: SprayFeatures, dq: DataQuality, target_date: date, run_date: date) -> SprayAdvice:
-    deps = SprayDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
+    passages = retrieve_for("spray", _SPRAY_QUERY)
+    deps = SprayDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date, passages=passages)
     res = await spray_agent.run(render_spray_input(features), deps=deps, model=resolve_model())
     out = res.output
     conf, caveat = _degrade(out.confidence, dq)

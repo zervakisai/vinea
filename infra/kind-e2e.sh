@@ -137,6 +137,30 @@ for col in cache_hit cost_usd input_tokens output_tokens; do
 done
 echo "cost columns: present, nullable, no default"
 
+step "assert: the pgvector extension and corpus tables exist (phase 15)"
+# The genuinely risky part of migration c73a51e8d4b2 is `CREATE EXTENSION vector`,
+# which succeeds only on a server that HAS pgvector -- the stock postgres:16 image
+# does not. Asserting it here is asserting that the test fixture, the compose
+# stack and any real cluster are all running an image that carries it, which is a
+# deployment fact no unit test can reach.
+schema=$(kubectl run vector-check --rm -i --restart=Never --image=vinea:e2e \
+  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+  --command -- python -c "
+from sqlalchemy import create_engine, text
+import os
+e = create_engine(os.environ['DATABASE_URL'])
+with e.connect() as c:
+    ext = c.execute(text(\"select 1 from pg_extension where extname='vector'\")).first()
+    cols = c.execute(text(\"select count(*) from information_schema.columns where table_name='corpus_chunks'\")).scalar_one()
+    cites = c.execute(text(\"select count(*) from information_schema.columns where table_name='advisory_citations'\")).scalar_one()
+print(f'vector={bool(ext)} corpus_chunks_cols={cols} advisory_citations_cols={cites}')
+" 2>/dev/null || true)
+echo "$schema" | grep -q "vector=True" \
+  || { echo "pgvector extension missing: ${schema:-<no output>}" >&2; exit 1; }
+echo "$schema" | grep -qE "corpus_chunks_cols=(9|10|11)" \
+  || { echo "corpus_chunks not created as expected: ${schema:-<no output>}" >&2; exit 1; }
+echo "schema: $schema"
+
 step "smoke test THROUGH the API, with a real key"
 # Not `curl /health`. A smoke test that proves a container started is theatre --
 # it would pass with an empty database and a broken schema. This one authenticates,

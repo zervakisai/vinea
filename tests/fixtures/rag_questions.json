@@ -1,0 +1,94 @@
+{
+  "_comment": [
+    "Labelled retrieval questions for the recall gate (phase 15).",
+    "",
+    "Ground truth is a CHAPTER, not a chunk id. Chunk ids are assigned in file",
+    "order by scripts/fetch_corpus.py, so they change whenever the chunker or the",
+    "upstream extraction changes -- and a gate keyed on them would go red on every",
+    "corpus regeneration for reasons unrelated to retrieval quality. A gate that",
+    "cries wolf gets deleted, so this one is labelled at a granularity that",
+    "survives re-chunking.",
+    "",
+    "These are authored questions, not invented data: the corpus is FAO's and",
+    "untouched. This is the same kind of artefact as phase 12's golden cases -- a",
+    "human saying what a right answer looks like.",
+    "",
+    "'chapters' lists every chapter that would be an acceptable hit. Several",
+    "questions legitimately have two, because FAO-56 splits single/dual crop",
+    "coefficient treatment across chapters 6 and 7."
+  ],
+  "questions": [
+    {
+      "id": "raw-mad",
+      "query": "readily available water RAW and the management allowed depletion fraction p",
+      "chapters": [8],
+      "why": "The irrigation trigger this system computes. Chapter 8 defines RAW = p x TAW."
+    },
+    {
+      "id": "taw-root-zone",
+      "query": "total available water from field capacity wilting point and rooting depth",
+      "chapters": [8],
+      "why": "TAW is the ceiling the running water balance is clamped to."
+    },
+    {
+      "id": "kc-midseason",
+      "query": "crop coefficient Kc mid-season stage for vines and fruit trees",
+      "chapters": [6, 7],
+      "why": "Deps.kc's source. The passage explains it; Deps still supplies the number."
+    },
+    {
+      "id": "etc-equation",
+      "query": "crop evapotranspiration ETc equals ETo multiplied by the crop coefficient",
+      "chapters": [5, 6],
+      "why": "The single line features.py implements."
+    },
+    {
+      "id": "penman-monteith",
+      "query": "FAO Penman-Monteith equation for reference evapotranspiration ETo",
+      "chapters": [2],
+      "why": "Where the ET0 column in the weather feed comes from."
+    },
+    {
+      "id": "wind-speed",
+      "query": "wind speed measurement height two metres and adjustment for evapotranspiration",
+      "chapters": [3],
+      "why": "The spray gate reasons about wind; the ETo calculation depends on it."
+    },
+    {
+      "id": "dew-point-humidity",
+      "query": "dew point temperature relative humidity and vapour pressure deficit",
+      "chapters": [3],
+      "why": "Delta-T is reconstructed from temperature and wet bulb; same chapter."
+    },
+    {
+      "id": "water-stress",
+      "query": "water stress coefficient Ks when root zone depletion exceeds RAW",
+      "chapters": [8],
+      "why": "What happens past the trigger the advisory recommends acting on."
+    },
+    {
+      "id": "irrigation-scheduling",
+      "query": "irrigation scheduling to avoid crop water stress and depth of water to apply",
+      "chapters": [8],
+      "why": "The advisory's recommended_depth_mm, in the document's own terms."
+    },
+    {
+      "id": "soil-evaporation",
+      "query": "evaporation from bare soil after a wetting event and the evaporation coefficient Ke",
+      "chapters": [7],
+      "why": "The dual-coefficient half this system deliberately does not model."
+    },
+    {
+      "id": "effective-rain",
+      "query": "how much rainfall infiltrates the root zone and how much is lost to runoff",
+      "chapters": [8],
+      "why": "effective_rain_fraction's justification."
+    },
+    {
+      "id": "growth-stages",
+      "query": "crop growth stages initial development mid-season and late season lengths",
+      "chapters": [6],
+      "why": "Which Kc applies when -- the config decision a grower actually makes."
+    }
+  ]
+}

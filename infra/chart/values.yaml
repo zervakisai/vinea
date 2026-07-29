@@ -88,6 +88,25 @@ gateway:
     requests: {cpu: 100m, memory: 384Mi}
     limits: {memory: 1Gi}
 
+# Retrieval (phase 15, ADR-008). Off by default, like the gateway, and for the
+# same reason: with `enabled: false` no corpus is ingested, `retrieve_for` finds
+# nothing, and the deployment behaves exactly as phase 14's did.
+#
+# Turning it on requires an image built with `--build-arg RAG=1` -- the embedding
+# model is baked in at build time so a nightly CronJob never reaches out to a
+# model hub at 02:00. An image without it fails the ingest Job loudly instead of
+# ingesting nothing quietly.
+#
+# There is no `VINEA_RAG_ENABLED` env var, deliberately. Retrieval is on when the
+# corpus is in the database and off when it is not; a second switch would let the
+# two disagree, and the resulting question ("it says enabled, why no citations?")
+# is worse than having one source of truth.
+rag:
+  enabled: false
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits: {memory: 1Gi}
+
 ingress:
   enabled: false
   className: ""

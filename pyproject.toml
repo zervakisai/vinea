@@ -38,6 +38,13 @@ dependencies = [
     # phase 12 (evals): the eval gate wraps the deterministic oracles as pydantic-evals
     # Evaluators; same major line as pydantic-ai/graph.
     "pydantic-evals>=1.0,<2",
+    # phase 15 (retrieval): the SQLAlchemy column type for pgvector. A core
+    # dependency, not part of the `rag` extra, because the *schema* is not
+    # optional — db/models.py is imported by the API, the worker and every
+    # migration. The embedding *model* is optional and stays in the extra; a
+    # deployment that never retrieves still has to be able to describe the table.
+    # ~50 KB of pure Python, so this costs nothing to carry.
+    "pgvector>=0.3",
 ]
 
 # phase 13 (containerize): the UI stack is an EXTRA, not a core dependency, purely
@@ -76,6 +83,14 @@ ui = [
 # at `import openai` the first night it is pointed at a gateway.
 gateway = ["pydantic-ai-slim[openai]>=1.0,<2"]
 
+# phase 15 (retrieval). model2vec is a *static* embedding model — a distilled
+# token matrix plus pooling, so inference is numpy and a tokenizer, with no torch
+# anywhere. That is the whole reason it is here rather than sentence-transformers:
+# it makes the recall gate runnable in CI, which needs no secret and no GPU.
+# pgvector supplies the SQLAlchemy column type; the index lives in the Postgres
+# we already run (ADR-008).
+rag = ["model2vec>=0.4"]
+
 [project.scripts]
 # `uv run vinea` is the one command (resolve + install + run, no venv activation).
 vinea = "vinea.cli:main"
@@ -86,7 +101,7 @@ dev = [
     "ruff>=0.8",
     # Self-reference to the ui extra so a bare `uv sync` still installs Streamlit:
     # dev groups ARE installed by default, extras are not.
-    "vinea[ui,gateway,anthropic,openai,google,groq,mistral]",
+    "vinea[ui,gateway,rag,anthropic,openai,google,groq,mistral]",
 ]
 
 [build-system]

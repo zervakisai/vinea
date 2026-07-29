@@ -36,6 +36,20 @@ class EnqueueResponse(BaseModel):
     already_queued: bool
 
 
+class CitationOut(BaseModel):
+    """One corpus passage that was **shown to** the model for one leg.
+
+    Not "used by". `advisory_citations` records what retrieval supplied, because
+    asking a model which sources it used is a self-report and phase 12 exists to
+    establish that self-report is not evidence. Any client rendering these must
+    label them accordingly -- the difference is the whole epistemic content.
+    """
+
+    leg: str
+    locator: str
+    rank: int
+
+
 class AdvisoryEnvelope(BaseModel):
     """An advisory plus the provenance beside it, for GET.
 
@@ -52,9 +66,15 @@ class AdvisoryEnvelope(BaseModel):
     model_id: str | None
     prompt_version: str | None
     overall_confidence: float | None
+    # phase 15. Additive and defaulted, so an older client ignores a field it does
+    # not know and a night with no corpus ingested simply carries an empty list --
+    # which is the fail-open floor surfacing honestly rather than as an error.
+    citations: list[CitationOut] = []
 
     @classmethod
-    def from_row(cls, row: Advisory, advisory: DailyFarmAdvisory) -> AdvisoryEnvelope:
+    def from_row(
+        cls, row: Advisory, advisory: DailyFarmAdvisory, citations: list | None = None
+    ) -> AdvisoryEnvelope:
         return cls(
             tenant=row.tenant,
             run_date=row.run_date,
@@ -64,6 +84,9 @@ class AdvisoryEnvelope(BaseModel):
             model_id=row.model_id,
             prompt_version=row.prompt_version,
             overall_confidence=row.overall_confidence,
+            citations=[
+                CitationOut(leg=c.leg, locator=c.locator, rank=c.rank) for c in (citations or [])
+            ],
         )
 
 

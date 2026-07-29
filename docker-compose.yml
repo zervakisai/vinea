@@ -9,7 +9,12 @@
 
 services:
   postgres:
-    image: postgres:16
+    # pgvector's image, not `postgres:16` (phase 15). It IS postgres:16 with the
+    # vector extension files present -- same server, same data directory, same
+    # everything else. Without it `CREATE EXTENSION vector` in migration
+    # c73a51e8d4b2 fails, which is the pre-upgrade hook correctly refusing to let
+    # code that needs a column type the server cannot create start serving.
+    image: pgvector/pgvector:pg16
     container_name: vinea-postgres
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vinea}

@@ -125,6 +125,7 @@ def process_one(
         trace_id: str | None = None
         pre_correction: dict | None = None
         cost = RunCost(input_tokens=None, output_tokens=None, cost_usd=None, cache_hit=None)
+        passages: list = []
 
         if not config.has_api_key(model):
             advisory = build_degraded_advisory(features, list(load_result.forecast), deps)
@@ -167,6 +168,7 @@ def process_one(
                     trace_id = instrumented.trace_id
                     pre_correction = instrumented.pre_correction_output
                     cost = instrumented.cost
+                    passages = instrumented.passages
                     route, degraded, model_id = "large_model", False, model
 
         # Persist advisory and mark the task done in ONE transaction, so the two
@@ -183,6 +185,10 @@ def process_one(
             pre_correction_output=pre_correction,
             cost=cost,
         )
+        # Citations land in the SAME transaction as the advisory and the task.
+        # A crash between them would leave an advisory that claims grounding it
+        # cannot show, or citations pointing at an advisory that was rolled back.
+        repository.save_citations(session, advisory_id=saved.id, passages=passages)
         queue.mark_done(session, task, advisory_id=saved.id)
         session.commit()
         return ProcessResult(task_id=task.id, status="done", route=route, degraded=degraded)

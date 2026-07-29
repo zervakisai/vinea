@@ -35,6 +35,17 @@ ARG PROVIDER=anthropic
 # gateway is opt-in all the way down to the bytes shipped.
 ARG GATEWAY=
 
+# phase 15: retrieval. `--build-arg RAG=1` installs model2vec AND bakes the
+# ~30 MB static embedding model into the image at build time.
+#
+# Baking it is the point. Without it the model downloads from the Hugging Face
+# hub on first use -- which for a nightly CronJob means the batch's first
+# advisory waits on a network fetch, and an egress-restricted cluster gets no
+# citations at all while looking healthy, because retrieval fails open to
+# silence. A build-time download is a build failing; a run-time download is a
+# grower quietly losing a feature.
+ARG RAG=
+
 # --------------------------------------------------------------------------- #
 # builder -- resolve and install into /app/.venv                              #
 # --------------------------------------------------------------------------- #
@@ -55,20 +66,55 @@ WORKDIR /app
 COPY pyproject.toml uv.lock README.md ./
 ARG PROVIDER
 ARG GATEWAY
+ARG RAG
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project --extra "${PROVIDER}" ${GATEWAY:+--extra gateway}
+    uv sync --locked --no-dev --no-install-project --extra "${PROVIDER}" ${GATEWAY:+--extra gateway} ${RAG:+--extra rag}
 
 COPY src/ ./src/
 # --no-editable: install the project as a real wheel, so the venv is
 # self-contained and can be copied without carrying `src/` into the runtime.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway}
+    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway} ${RAG:+--extra rag}
+
+# Bake the embedding weights. HF_HOME is set so the cache lands somewhere the
+# runtime stage can copy from and the runtime user can read.
+#
+# NOTE, measured and abandoned: you cannot bake HALF a Hugging Face snapshot.
+#
+# `potion-base-8M` ships the weights twice -- `model.safetensors` (30.2 MB, what
+# the numpy path reads) and `onnx/model.onnx` (30.2 MB, for a runtime this image
+# does not contain). Fetching with `ignore_patterns=['onnx/*']` downloads only
+# what is used and halves the cache, and then loading it under HF_HUB_OFFLINE=1
+# fails:
+#
+#   IncompleteSnapshotError: the cached snapshot ... is incomplete:
+#   3 file(s) are missing (.gitattributes, README.md, onnx/model.onnx)
+#
+# The offline guarantee and a pruned cache are mutually exclusive: offline mode
+# verifies the snapshot is *complete*, not that the files it needs are present.
+# Given the choice, the guarantee is worth more than 30 MB -- a nightly CronJob
+# that reaches out to a model hub at 02:00 is a dependency nobody sees until the
+# night egress is blocked, and retrieval fails open to silence, so it would look
+# healthy while quietly shipping uncited advisories.
+#
+# So: bake the whole repository, pay the 30 MB, and verify it loads offline here
+# rather than discovering it in a cluster.
+ENV HF_HOME=/app/.hf
+RUN if [ -n "${RAG}" ]; then \
+      .venv/bin/python -c "\
+from model2vec import StaticModel; \
+StaticModel.from_pretrained('minishlab/potion-base-8M')" \
+   && HF_HUB_OFFLINE=1 .venv/bin/python -c "\
+from model2vec import StaticModel; \
+m = StaticModel.from_pretrained('minishlab/potion-base-8M'); \
+assert m.encode(['smoke test']).shape[1] == 256, 'baked model has the wrong width'"; \
+    else mkdir -p /app/.hf; fi
 
 # The UI variant is the same resolution plus one extra, so it reuses every layer
 # above rather than resolving from scratch.
 FROM builder AS builder-ui
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway} --extra ui
+    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway} ${RAG:+--extra rag} --extra ui
 
 # --------------------------------------------------------------------------- #
 # runtime-base -- everything both images share                                #
@@ -90,15 +136,21 @@ WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    HF_HOME=/app/.hf \
+    HF_HUB_OFFLINE=1
 
 # Migrations ship in the image, because the migration hook (phase 13) runs
 # `alembic upgrade head` from this same artifact -- the schema and the code that
 # expects it are versioned together by construction.
 COPY --chown=vinea:vinea alembic.ini ./
 COPY --chown=vinea:vinea migrations/ ./migrations/
-# The committed capture: the worker's CsvSource globs this directory.
+# The committed capture: the worker's CsvSource globs this directory. It also
+# carries data/corpus/, which `python -m vinea.rag ingest` reads (phase 15).
 COPY --chown=vinea:vinea data/ ./data/
+# Empty unless built with RAG=1. HF_HUB_OFFLINE above means a missing model is an
+# immediate clear error rather than a silent network call at 02:00.
+COPY --from=builder --chown=vinea:vinea /app/.hf /app/.hf
 
 USER vinea
 

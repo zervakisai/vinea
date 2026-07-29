@@ -19,6 +19,7 @@ the project exactly as it stood there, and `uv run pytest` is green at every tag
 | 12 | Prompt registry & eval gate | `phase-12` | [12](12-prompts-and-evals.md) |
 | 13 | Containerize & deploy | `phase-13` | [13](13-containerize-and-deploy.md) |
 | 14 | LLM gateway & cost | `phase-14` | [14](14-gateway-and-cost.md) |
+| 15 | Retrieval & citations | `phase-15` | [15](15-rag-and-citations.md) |
 
 ## How to read this
 
@@ -33,7 +34,7 @@ The single claim the whole sequence is arranged to demonstrate is that the
 **physics and the topology** from phases 1–4 never have to change again:
 
 ```bash
-git diff --ignore-blank-lines phase-04 phase-14 -- \
+git diff --ignore-blank-lines phase-04 phase-15 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 ```
@@ -41,8 +42,8 @@ git diff --ignore-blank-lines phase-04 phase-14 -- \
 Note how narrowly that has to be stated to stay true. `ingest.py` and `config.py`
 grow (additively — nothing removed). `agents.py` and `cli.py` genuinely change:
 phase 12 swaps the instruction f-strings for registry lookups, phase 14 swaps
-`model=config.MODEL` for `model=resolve_model()`, and the CLI gains a `--source`
-flag. Those are the *wiring* at the edges, not the reasoning.
+`model=config.MODEL` for `model=resolve_model()`, phase 15 adds a retrieval call
+and a second instruction block, and the CLI gains a `--source` flag. Those are the *wiring* at the edges, not the reasoning.
 
 Every later phase adds a layer *around* the deterministic core rather than
 reaching into it. When a phase does force a change, that is worth noticing — and

@@ -29,6 +29,7 @@ from __future__ import annotations
 import enum
 from datetime import date, datetime
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
     CheckConstraint,
@@ -47,6 +48,8 @@ from sqlalchemy import (
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
+
+from vinea.rag.embedding import EMBEDDING_DIM
 
 
 def _utcnow_column(**kwargs: object) -> Column:
@@ -535,6 +538,126 @@ class AdvisoryTask(SQLModel, table=True):
         default=None,
         sa_column=Column(Integer, ForeignKey("advisories.id", ondelete="SET NULL")),
     )
+    created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+
+
+class CorpusChunk(SQLModel, table=True):
+    """One retrievable passage of FAO-56, with its vector and its locator.
+
+    **A cache, not truth** — the same category as `feature_cache`, and for the
+    same reason: every row here is reproducible by running
+    `scripts/fetch_corpus.py` and re-embedding. `TRUNCATE corpus_chunks;` is
+    always safe. What is NOT reproducible is which passages were shown to the
+    model on a given night, and that is why `advisory_citations` below is a
+    separate table rather than a join through this one.
+
+    The embedding width is a constant (`rag.embedding.EMBEDDING_DIM`), not a
+    lookup: a migration cannot ask a model at runtime how wide its output is, so
+    changing embedder is a schema change and should feel like one.
+
+    `text` is stored beside the vector deliberately. The lexical half of the
+    hybrid query runs `to_tsvector` over this column, so meaning-search and
+    exact-token search are two `SELECT`s against one table in one database —
+    which is what makes hybrid retrieval affordable here at all (ADR-008).
+    """
+
+    __tablename__ = "corpus_chunks"
+    __table_args__ = (
+        # (source, chunk_id) is the natural key: re-ingesting the same corpus
+        # overwrites rather than duplicating, exactly like the advisory upsert.
+        UniqueConstraint("source", "chunk_id", name="uq_corpus_chunks_natural"),
+        # The lexical index. GIN over the expression rather than a stored
+        # tsvector column: one fewer column to keep in sync, and the expression
+        # in the index must match the one in the query or Postgres silently
+        # ignores the index and sequential-scans.
+        Index(
+            "ix_corpus_chunks_fts",
+            text("to_tsvector('english', text)"),
+            postgresql_using="gin",
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    # Which corpus this came from. TEXT and open-ended, the same reasoning as
+    # `weather_observations.source`: a second document is a new adapter's worth
+    # of work, not a schema migration.
+    source: str = Field(sa_column=Column(Text, nullable=False))
+    chunk_id: int = Field(sa_column=Column(Integer, nullable=False))
+
+    chapter: str = Field(sa_column=Column(Text, nullable=False))
+    section: str = Field(sa_column=Column(Text, nullable=False, server_default=""))
+    # What a citation shows a human so they can go and check. A passage without
+    # one is worse than no passage: it moves a claim from unverified to falsely
+    # verified.
+    locator: str = Field(sa_column=Column(Text, nullable=False))
+    text_: str = Field(sa_column=Column("text", Text, nullable=False))
+
+    # Nullable: a chunk can be ingested before it is embedded, and an unembedded
+    # chunk is still lexically retrievable. Empty is honest; a zero vector would
+    # be a lie that sits at a fixed distance from every query.
+    embedding: list[float] | None = Field(default=None, sa_column=Column(Vector(EMBEDDING_DIM)))
+    # Which embedder produced it. Change model, change vectors, and this is what
+    # tells you a mixed-embedder table is being queried -- the same job the five
+    # drift tags do for advisories.
+    embedding_model: str | None = Field(default=None, sa_column=Column(Text))
+
+    ingested_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+
+
+class AdvisoryCitation(SQLModel, table=True):
+    """Which passages were shown to the model when producing one advisory.
+
+    Read the table name carefully against what it stores: these are the passages
+    the retriever **supplied**, not the ones the model claims to have **used**.
+    That distinction is the phase's central honesty, and the choice was between:
+
+      * ask the model which sources it used — a stronger claim, and a *self
+        report*. Phase 12 spent a whole phase establishing that self-report is
+        not evidence, and a model can name a citation it never read.
+      * record what retrieval put in front of it — a weaker claim, and a *fact
+        about the run*. It cannot be gamed, needs no model cooperation, and is
+        reproducible from this table alone.
+
+    The second, and the UI must say "sources shown to the model" rather than
+    "sources used", because the difference is the entire epistemic content.
+
+    Why a table and not a field on `DailyFarmAdvisory`: the contract is protected
+    (phase 4's invariant), and more to the point a citation is *about* the
+    advisory the way `trace_id`, `model_id` and `cost_usd` are about it — which
+    `repository.get_advisory_row` already decided in phase 6. Shaped like
+    `annotations` so "which passages get cited most" is a query, not a JSONB scan.
+    """
+
+    __tablename__ = "advisory_citations"
+    __table_args__ = (
+        UniqueConstraint("advisory_id", "leg", "chunk_id", name="uq_advisory_citations_natural"),
+        Index("ix_advisory_citations_advisory", "advisory_id"),
+        Index("ix_advisory_citations_chunk", "chunk_id"),
+        CheckConstraint(
+            "leg IN ('irrigation', 'spray', 'reconciliation')",
+            name="ck_advisory_citations_leg",
+        ),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    advisory_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("advisories.id", ondelete="CASCADE"), nullable=False)
+    )
+    # NOT NULL here, unlike `annotations.leg`. A citation is always retrieved for
+    # a specific question -- there is no "cited the advisory as a whole".
+    leg: str = Field(sa_column=Column(Text, nullable=False))
+
+    chunk_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("corpus_chunks.id", ondelete="CASCADE"), nullable=False)
+    )
+    # Denormalised from corpus_chunks on purpose, and the exception proves the
+    # rule. `corpus_chunks` is a cache and may be truncated or re-chunked; if that
+    # happens, a citation whose locator lived only behind the foreign key becomes
+    # a dangling number. What was cited on a given night is not recomputable, so
+    # by ADR-001 it is stored.
+    locator: str = Field(sa_column=Column(Text, nullable=False))
+    rank: int = Field(sa_column=Column(Integer, nullable=False))
+
     created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 
 

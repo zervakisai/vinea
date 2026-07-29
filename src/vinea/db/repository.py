@@ -253,3 +253,69 @@ __all__ = [
     "save_advisory",
     "save_grower_config",
 ]
+
+
+# ---------------------------------------------------------------------------
+# citations (phase 15)
+# ---------------------------------------------------------------------------
+
+
+def save_citations(session: Session, *, advisory_id: int, passages: list) -> int:
+    """Record which corpus passages were shown to the model for one advisory.
+
+    Written AFTER `save_advisory`, because the advisory's id is the key. Does not
+    commit -- the worker lands the advisory, its task and its citations in one
+    transaction, so a crash never leaves an advisory citing nothing while
+    claiming to be grounded.
+
+    Re-running a night UPSERTs the advisory onto the same row; without the delete
+    below, a second run would leave the *union* of both runs' citations attached
+    to one advisory. Idempotency has to reach the child rows too, and this is the
+    kind of thing a unique constraint alone does not give you: the constraint
+    stops duplicates of the same passage, not the accumulation of different ones.
+    """
+    from sqlalchemy import delete as sa_delete
+
+    from vinea.db.models import AdvisoryCitation, CorpusChunk
+
+    session.execute(sa_delete(AdvisoryCitation).where(AdvisoryCitation.advisory_id == advisory_id))
+    if not passages:
+        session.flush()
+        return 0
+
+    # The retriever reports the corpus chunk's row id, which is what the foreign
+    # key needs. Filter to ids that still exist: `corpus_chunks` is a cache and
+    # may have been re-ingested between retrieval and write, and a citation that
+    # fails a foreign key would fail the whole advisory for a bookkeeping reason.
+    live = {
+        row for (row,) in session.execute(
+            select(CorpusChunk.id).where(CorpusChunk.id.in_({p.chunk_id for p in passages}))
+        )
+    }
+    rows = [
+        AdvisoryCitation(
+            advisory_id=advisory_id,
+            leg=p.leg,
+            chunk_id=p.chunk_id,
+            locator=p.locator,
+            rank=p.rank,
+        )
+        for p in passages
+        if p.chunk_id in live
+    ]
+    session.add_all(rows)
+    session.flush()
+    return len(rows)
+
+
+def get_citations(session: Session, *, advisory_id: int) -> list:
+    """Citation rows for one advisory, best-ranked first within each leg."""
+    from vinea.db.models import AdvisoryCitation
+
+    return list(
+        session.exec(
+            select(AdvisoryCitation)
+            .where(AdvisoryCitation.advisory_id == advisory_id)
+            .order_by(AdvisoryCitation.leg, AdvisoryCitation.rank)
+        )
+    )
