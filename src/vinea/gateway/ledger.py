@@ -52,12 +52,18 @@ class Ledger:
     # How many model requests the wrapper saw. Distinguishes "no gateway" from
     # "no calls at all" when reading the ledger back.
     calls: int = 0
+    # phase 16. Characters of the fully-assembled request, measured at the same
+    # instant as the token count above. Paired numbers from one request are what
+    # make a chars-per-token calibration a measurement rather than a restatement
+    # of the assumption it is meant to check.
+    prompt_chars: int = 0
 
-    def record_usage(self, *, input_tokens: int, output_tokens: int) -> None:
-        """From the SDK's `ModelResponse.usage`. Always available."""
+    def record_usage(self, *, input_tokens: int, output_tokens: int, prompt_chars: int = 0) -> None:
+        """From the SDK's `ModelResponse.usage`, plus what we sent to earn it."""
         self.calls += 1
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
+        self.prompt_chars += prompt_chars
 
     def record_gateway_headers(self, *, cost_usd: float | None, cache_hit: bool | None) -> None:
         """From the gateway's response headers. Available only behind a gateway."""
@@ -75,6 +81,10 @@ class RunCost:
     output_tokens: int | None
     cost_usd: float | None
     cache_hit: bool | None
+    # phase 16. NULL alongside input_tokens, never on its own: the pair is the
+    # point, and a character count with no token count beside it calibrates
+    # nothing.
+    context_chars: int | None = None
 
     @classmethod
     def from_ledger(cls, ledger: Ledger) -> RunCost:
@@ -95,6 +105,7 @@ class RunCost:
             output_tokens=ledger.output_tokens,
             cost_usd=ledger.cost_usd,
             cache_hit=all(ledger.cache_flags) if ledger.cache_flags else None,
+            context_chars=ledger.prompt_chars or None,
         )
 
 

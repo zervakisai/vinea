@@ -191,13 +191,41 @@ def render_spray_input(sf: SprayFeatures) -> str:
         "\n".join(f"  - {w.start:%H:%M}-{w.end:%H:%M}: {w.reason}" for w in sf.windows)
         or "  (none)"
     )
-    hours = "\n".join(
-        f"  {h.timestamp:%H:%M} band={h.band} wind={h.wind_ms}m/s index={h.spray_index} "
-        f"precip={h.precip_mm} suitable={h.suitable}"
-        for h in sf.hours
+    # phase 16: omit per-hour fields that are None for EVERY hour, and say so once.
+    #
+    # `index=None` repeated 24 times is 264 characters restating a single fact --
+    # this feed carries no vendor spray index. "Missing stays missing" was always
+    # about not fabricating a value; it never required announcing an absence per
+    # row. The absence is still stated, once, so the model cannot mistake silence
+    # for "the index was fine".
+    #
+    # Only ALL-None columns are dropped. A field that is None for some hours and
+    # present for others still varies, and hiding the gaps would be exactly the
+    # fabrication the rule forbids.
+    absent = [
+        label
+        for label, values in (
+            ("spray index", [h.spray_index for h in sf.hours]),
+            ("precipitation", [h.precip_mm for h in sf.hours]),
+        )
+        if sf.hours and all(v is None for v in values)
+    ]
+    def _hour(h) -> str:
+        fields = [f"band={h.band}", f"wind={h.wind_ms}m/s"]
+        if h.spray_index is not None or "spray index" not in absent:
+            fields.append(f"index={h.spray_index}")
+        if h.precip_mm is not None or "precipitation" not in absent:
+            fields.append(f"precip={h.precip_mm}")
+        fields.append(f"suitable={h.suitable}")
+        return f"  {h.timestamp:%H:%M} " + " ".join(fields)
+
+    hours = "\n".join(_hour(h) for h in sf.hours)
+    missing_note = (
+        f"Not reported by this feed for any hour: {', '.join(absent)}.\n" if absent else ""
     )
     return (
         f"Decide spraying for {sf.target_date.isoformat()}. Band counts: {sf.band_counts}.\n"
+        f"{missing_note}"
         f"Candidate windows (choose ONLY from these; you may trim):\n{windows}\n"
         f"Limiting factors: {'; '.join(sf.limiting_factors) or 'none'}\n"
         f"Per-hour signals:\n{hours}"

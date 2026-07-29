@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import logging
 
+from vinea.context.budget import DEFAULT_LEG_TOKEN_BUDGET, fit_to_budget
 from vinea.rag.citations import RetrievedPassage, current_citations
 
 logger = logging.getLogger(__name__)
@@ -39,13 +40,25 @@ logger = logging.getLogger(__name__)
 # query and the tests cannot drift apart on a string literal.
 SOURCE = "fao56"
 
-# How many passages an agent is shown per leg. Three, and phase 16 will have to
-# justify any increase in tokens rather than inheriting it: this is exactly the
-# kind of constant that grows to ten because nobody measured what it cost.
+# How many passages the *query* returns. Phase 15 chose three because three is a
+# reasonable-looking number, and phase 16 measured what that bought: 4 217
+# characters, 64% of the irrigation leg's entire context.
+#
+# It stays at three, and the ceiling moved to a different unit. A count is the
+# wrong unit for a context budget because passages are not the same length --
+# chunks run 200 to 1 200 characters, so `TOP_K = 3` buys anywhere from 600 to
+# 3 600. `DEFAULT_LEG_TOKEN_BUDGET` is the real bound; this is now just how deep
+# the ranking is read before the budget decides.
 TOP_K = 3
 
 
-def retrieve_for(leg: str, query: str, *, top_k: int = TOP_K) -> list[RetrievedPassage]:
+def retrieve_for(
+    leg: str,
+    query: str,
+    *,
+    top_k: int = TOP_K,
+    budget_tokens: int = DEFAULT_LEG_TOKEN_BUDGET,
+) -> list[RetrievedPassage]:
     """Passages for one leg's question, or an empty list. Never raises.
 
     Imports are function-local so that a deployment with no database reachable,
@@ -74,6 +87,20 @@ def retrieve_for(leg: str, query: str, *, top_k: int = TOP_K) -> list[RetrievedP
         RetrievedPassage(leg=leg, chunk_id=h.chunk_id, locator=h.locator, text=h.text, rank=rank)
         for rank, h in enumerate(hits, start=1)
     ]
+
+    # phase 16: a token ceiling, enforced by dropping whole low-ranked passages.
+    # Applied HERE rather than in `render_passages` so that what gets cited is
+    # exactly what got shown -- trimming after the ledger recorded them would
+    # produce citations for passages the model never saw, which is the same
+    # falsely-verified failure this system keeps arranging itself against.
+    outcome = fit_to_budget(passages, budget_tokens=budget_tokens)
+    if outcome.trimmed:
+        logger.debug(
+            "leg %s: dropped %d of %d passages to fit %d tokens (%d -> %d)",
+            leg, outcome.dropped, len(passages), budget_tokens,
+            outcome.tokens_before, outcome.tokens_after,
+        )
+    passages = outcome.kept
 
     ledger = current_citations()
     if ledger is not None:

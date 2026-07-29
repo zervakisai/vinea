@@ -322,6 +322,13 @@ class Advisory(SQLModel, table=True):
     # exact-match cache -- the column answers "did this advisory cost anything
     # new?", and two thirds cached still bought a completion.
     cache_hit: bool | None = Field(default=None, sa_column=Column(Boolean))
+    # phase 16. Characters of the assembled request, recorded at the same instant
+    # as `input_tokens` and NULL whenever that is. The pair is what makes a
+    # chars-per-token calibration a measurement; either number alone restates an
+    # assumption. Not recomputable -- the retrieved passages that night depend on
+    # a corpus that may since have been re-chunked (ADR-001, same argument as
+    # `advisory_citations.locator`).
+    context_chars: int | None = Field(default=None, sa_column=Column(Integer))
 
     created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 

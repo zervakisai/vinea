@@ -98,8 +98,35 @@ class MeteredModel(WrapperModel):
             ledger.record_usage(
                 input_tokens=usage.input_tokens or 0,
                 output_tokens=usage.output_tokens or 0,
+                # phase 16: the characters that bought those tokens, counted at
+                # the one point in the system that sees the fully-assembled
+                # request. Paired here so `context.calibration_ratio` divides two
+                # numbers from the SAME call rather than a total by an assumption.
+                prompt_chars=_prompt_chars(messages),
             )
         return response
+
+
+def _prompt_chars(messages: list[ModelMessage]) -> int:
+    """Characters in the assembled request, counted best-effort.
+
+    Walks every part of every message and adds the length of whatever carries
+    text. Best-effort is the honest description: tool schemas, images and
+    provider-side system prompts are not visible here, so this UNDER-counts what
+    the provider tokenizes. That direction matters -- a calibration built on it
+    reports a chars-per-token ratio lower than the truth, which makes the
+    estimator look worse than it is rather than better. Erring toward pessimism
+    about our own numbers is the right way round for a budget.
+    """
+    total = 0
+    for message in messages:
+        for part in getattr(message, "parts", ()):
+            content = getattr(part, "content", None)
+            if isinstance(content, str):
+                total += len(content)
+            elif isinstance(content, list):
+                total += sum(len(item) for item in content if isinstance(item, str))
+    return total
 
 
 async def _record_gateway_headers(response: httpx.Response) -> None:

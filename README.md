@@ -41,23 +41,24 @@ git checkout main
 | 13 | Containerize & deploy | [13](docs/phases/13-containerize-and-deploy.md) | Code and schema cannot move atomically |
 | 14 | LLM gateway & cost | [14](docs/phases/14-gateway-and-cost.md) | A budget in the wrong unit is worse than none |
 | 15 | Retrieval & citations | [15](docs/phases/15-rag-and-citations.md) | Retrieval feeds the explanation, never the computation |
+| 16 | Context engineering | [16](docs/phases/16-context-engineering.md) | Check what the instrument measures before quoting it |
 
 The production layers do not reach into the core built in phases 1–4. That is a
 checkable claim, not a slogan — and worth checking *precisely*, because which files
 are exempt is the interesting part:
 
 ```bash
-# Unchanged from phase 4 all the way to phase 15 — the physics, the contracts,
+# Unchanged from phase 4 all the way to phase 16 — the physics, the contracts,
 # the crop config, the topology, the conflict facts, the orchestration entry:
-git diff --ignore-blank-lines phase-04 phase-15 -- \
+git diff --ignore-blank-lines phase-04 phase-16 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 
 # Additive only — not one line removed:
-git diff phase-04 phase-15 -- src/vinea/ingest.py src/vinea/config.py
+git diff phase-04 phase-16 -- src/vinea/ingest.py src/vinea/config.py
 
 # Genuinely changed, and you should expect these to be:
-git diff phase-04 phase-15 -- src/vinea/agents.py src/vinea/cli.py
+git diff phase-04 phase-16 -- src/vinea/agents.py src/vinea/cli.py
 ```
 
 `agents.py` changes in phase 12, when the instruction f-strings become registry
@@ -279,6 +280,7 @@ src/vinea/  config · ingest · deps · contracts · features        the determi
             evals/      oracles, asymmetric scoring, golden, judge phase 12
             gateway/    routing, ledger, budget refusals            phase 14
             rag/        corpus, embedding, hybrid store, citations   phase 15
+            context/    token accounting, the per-leg budget          phase 16
 data/       the two CSVs + ATTRIBUTION.md
             corpus/  798 passages of FAO-56, CC BY 4.0          phase 15
 scripts/    fetch_dataset.py — regenerates data/ from Open-Meteo
@@ -289,7 +291,7 @@ Dockerfile  two targets: `app` (API + worker) and `ui`               phase 13
 infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh          phase 13
             chart/files/litellm-config.yaml — one file, two deploys  phase 14
             sealed-secrets/ · testing/ the throwaway Postgres
-docs/       adr/ · phases/ — the eight decisions and the fifteen lessons
+docs/       adr/ · phases/ — the eight decisions and the sixteen lessons
 migrations/ Alembic versions (the schema we actually ship)
 tests/      offline via TestModel/FunctionModel · fixtures/
 ```
