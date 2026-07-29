@@ -34,6 +34,19 @@ from vinea.deps import Deps
 # A conservative default per-tenant ceiling on model calls per nightly run. One
 # tenant's runaway (a sensor feed spewing borderline days) can burn its own budget
 # to zero and be throttled, without touching anyone else's.
+#
+# SUPERSEDED IN PHASE 14, and left standing as the counter-example (ADR-007).
+# This budget counts CALLS, which do not bound spend, because calls are not
+# fungible: a 200-token call and a 200,000-token call decrement it identically.
+# Widen the retrieved context or lengthen a template through the phase-12 registry
+# and spend moves by an order of magnitude while this reports 40/100 used. It is
+# also in-memory, so it resets when a worker starts and two workers each get 100.
+#
+# A control that reads 40/100 while spend triples is worse than no control,
+# because people trust it. The ceiling now lives on a LiteLLM virtual key -- one
+# system that sees every call, denominated in money, persistent across restarts
+# and shared between workers. A rule in code is a promise; in the database it is
+# a guarantee.
 DEFAULT_TENANT_CALL_BUDGET = 100
 
 

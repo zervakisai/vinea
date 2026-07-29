@@ -82,6 +82,15 @@ class AdvisorySummary(BaseModel):
     overall_confidence: float | None
     trace_id: str | None
 
+    # phase 14. Additive and optional: an older client ignores four fields it
+    # does not know, which is the same property the expand migration relies on
+    # one layer down. All None for a night that called no model, or one that ran
+    # without a gateway to report cost -- never 0.0, which would read as free.
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cost_usd: float | None = None
+    cache_hit: bool | None = None
+
     @classmethod
     def from_row(cls, row: Advisory) -> AdvisorySummary:
         return cls(
@@ -91,6 +100,10 @@ class AdvisorySummary(BaseModel):
             degraded=row.degraded,
             overall_confidence=row.overall_confidence,
             trace_id=row.trace_id,
+            input_tokens=row.input_tokens,
+            output_tokens=row.output_tokens,
+            cost_usd=row.cost_usd,
+            cache_hit=row.cache_hit,
         )
 
 

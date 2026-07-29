@@ -299,6 +299,27 @@ class Advisory(SQLModel, table=True):
     # anything else here. Written by S4.4; NULL until then.
     pre_correction_output: dict | None = Field(default=None, sa_column=Column(JSONB))
 
+    # --- cost (phase 14) ----------------------------------------------------
+    # ADR-001's test, applied to money: could this be recomputed from surviving
+    # inputs? The tokens could. The *price in force the night the call was made*
+    # could not -- providers reprice, and `tokens x price_today` computed in March
+    # against a January advisory returns a number that was never charged to
+    # anyone. So cost is stored as evidence, not derived on read.
+    #
+    # All four are NULL whenever nothing in the path knew the answer: no model was
+    # called (the router skipped it, or there was no key), or no gateway was
+    # configured to report cost. A zero would claim a call was made and was free.
+    # And `cost_per_token` is deliberately absent for the same reason `raw_mm` is
+    # absent from grower_config -- it is cost_usd / (input_tokens + output_tokens),
+    # and a derived value with its own column gets a chance to disagree with itself.
+    input_tokens: int | None = Field(default=None, sa_column=Column(Integer))
+    output_tokens: int | None = Field(default=None, sa_column=Column(Integer))
+    cost_usd: float | None = Field(default=None, sa_column=Column(Float))
+    # True only when EVERY model call in the run was served from the gateway's
+    # exact-match cache -- the column answers "did this advisory cost anything
+    # new?", and two thirds cached still bought a completion.
+    cache_hit: bool | None = Field(default=None, sa_column=Column(Boolean))
+
     created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 
 

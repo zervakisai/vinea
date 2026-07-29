@@ -110,7 +110,7 @@ def api_client(committing_db, monkeypatch):
     main.app.dependency_overrides.clear()
 
 
-def _seed(engine, *, tenant=TENANT, run_date=RUN_DATE, degraded=True, trace_id=None, confidence=0.6):
+def _seed(engine, *, tenant=TENANT, run_date=RUN_DATE, degraded=True, trace_id=None, confidence=0.6, cost=None):
     from vinea.contracts import DailyFarmAdvisory, IrrigationAdvice, SprayAdvice
     from vinea.db import repository
     from vinea.deps import Deps
@@ -146,6 +146,7 @@ def _seed(engine, *, tenant=TENANT, run_date=RUN_DATE, degraded=True, trace_id=N
             deps=Deps(),
             degraded=degraded,
             trace_id=trace_id,
+            cost=cost,
         )
         s.commit()
 
@@ -254,9 +255,19 @@ def app_test_env(committing_db, monkeypatch):
         ),
     )
 
+    from vinea.gateway.ledger import RunCost
     from vinea.jobs import metrics, queue
 
-    _seed(committing_db, tenant=TENANT, degraded=False, trace_id="abc123", confidence=0.8)
+    # One priced night and one unpriced one, so the Cost panel renders both its
+    # aggregates and its "no cost recorded" counter rather than only the empty state.
+    _seed(
+        committing_db,
+        tenant=TENANT,
+        degraded=False,
+        trace_id="abc123",
+        confidence=0.8,
+        cost=RunCost(input_tokens=3120, output_tokens=284, cost_usd=0.0114, cache_hit=False),
+    )
     _seed(committing_db, tenant="olivares", degraded=True, confidence=0.4)
     with Session(committing_db) as s:
         queue.enqueue(s, tenant=TENANT, run_date=date(2025, 2, 10))
@@ -267,7 +278,7 @@ def app_test_env(committing_db, monkeypatch):
     main.app.dependency_overrides.clear()
 
 
-@pytest.mark.parametrize("panel", ["Grower view", "Operator overview", "Quality monitor"])
+@pytest.mark.parametrize("panel", ["Grower view", "Operator overview", "Quality monitor", "Cost"])
 def test_every_panel_renders_without_error(app_test_env, panel):
     from streamlit.testing.v1 import AppTest
 

@@ -373,6 +373,16 @@ adds whiteout entries. The trim was tried, measured, and removed.
 | | |
 |---|---|
 | `app` image | **309 MB** — 3% over the 300 MB target, deliberately |
+
+> **Correction, 2026-07-29 (phase 14).** That 309 MB no longer reproduces. Built
+> from this same tag today, on the same machine, the `app` image is **389 MB** —
+> and not one line of this repository changed. `ARG PYTHON_VERSION=3.12` resolves
+> to `python:3.12-slim-bookworm`, a *floating tag*, and the base moved underneath
+> the measurement. The irony is local: this Dockerfile pins uv by version with a
+> comment about floating toolchains, three lines above a base image it pins by
+> name only. Phase 14's doc has the longer version; the number above is left as
+> written, because a measurement is a fact about a moment and rewriting it would
+> hide exactly the lesson.
 | `ui` image | far over, and not asked to meet it: `pyarrow` alone is 119 MB |
 | The last 48 MB | dropping precompiled bytecode: 261 MB, but application import goes 1.28 s → 2.19 s. Kept the bytecode; an API that scales to zero pays that second on every cold start |
 | Chart | 6 resources, one of them a hook |

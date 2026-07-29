@@ -174,3 +174,84 @@ def test_no_plaintext_secret_values_are_rendered():
     assert "kind: Secret\n" not in rendered
     for leaked in ("ANTHROPIC_API_KEY: sk-", "postgresql+psycopg://", "password:"):
         assert leaked not in rendered
+
+
+# --------------------------------------------------------------------------- #
+# The gateway is opt-in, all the way down (phase 14)                           #
+# --------------------------------------------------------------------------- #
+
+
+@helm_required
+def test_the_default_deploy_has_no_gateway():
+    """The phase's central claim, asserted on the rendered manifest.
+
+    With `gateway.enabled: false` nothing tells the app a gateway exists, so
+    `resolve_model()` returns the plain model string and the deployment behaves
+    exactly as phase 13's did. If this ever renders a URL by default, the "no
+    gateway changes nothing" guarantee has quietly become "no gateway is
+    untested".
+    """
+    rendered = _render()
+    assert "VINEA_GATEWAY_URL" not in rendered
+    assert "component: gateway" not in rendered
+
+
+@helm_required
+def test_enabling_the_gateway_wires_every_workload_to_it():
+    """API, UI and the worker CronJob all get the URL, or none of them should.
+
+    A worker pointed at the gateway and an API that is not would produce advisories
+    with cost recorded and reads that cannot explain them.
+    """
+    rendered = _render("gateway.enabled=true")
+    assert rendered.count("VINEA_GATEWAY_URL") == 3
+    assert "http://vinea-vinea-gateway:4000" in rendered
+    assert "kind: ConfigMap" in rendered
+
+
+@helm_required
+def test_an_external_gateway_renders_no_gateway_workload():
+    """Somebody else operates it: point at it and render nothing to run."""
+    rendered = _render("gateway.enabled=true", "gateway.externalUrl=https://llm.example.com")
+    assert "https://llm.example.com" in rendered
+    assert "component: gateway" not in rendered
+
+
+@helm_required
+def test_the_gateway_secret_is_not_the_application_secret():
+    """The security case for a gateway, as a Kubernetes fact.
+
+    Provider keys live in the gateway's Secret; app pods read a different one and
+    hold only a virtual key with a spend ceiling. Collapsing the two would hand
+    every workload the unbounded credential and undo the reason for running a
+    gateway at all -- so the separation is asserted rather than left to values.
+    """
+    rendered = _render("gateway.enabled=true")
+    api_secret = "vinea-secrets"
+    gateway_secret = "vinea-gateway-secrets"
+    assert gateway_secret in rendered
+    assert api_secret != gateway_secret
+    # The gateway's Secret must appear exactly once: on the gateway pod.
+    assert rendered.count(gateway_secret) == 1
+
+
+@helm_required
+def test_the_gateway_config_is_not_templated_secrets():
+    """The ConfigMap is world-readable to anyone with `get configmaps`.
+
+    Every credential in the LiteLLM config must therefore be `os.environ/NAME`,
+    resolved from the Secret at runtime -- never a value.
+    """
+    rendered = _render("gateway.enabled=true")
+    assert "os.environ/ANTHROPIC_API_KEY" in rendered
+    assert "sk-ant-" not in rendered
+    assert "sk-vinea" not in rendered
+
+
+@helm_required
+def test_the_gateway_rolls_when_its_config_changes():
+    """Without the checksum annotation, editing the model list updates the mounted
+    file on a pod that read it at startup -- and `helm upgrade` reports success on
+    a gateway still serving the old configuration."""
+    rendered = _render("gateway.enabled=true")
+    assert "checksum/config:" in rendered

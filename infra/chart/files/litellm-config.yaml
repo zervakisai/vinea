@@ -1,0 +1,87 @@
+# LiteLLM proxy -- the gateway (phase 14, ADR-007).
+#
+# Read this file as the answer to "what does the gateway know that the app must
+# not?". Three things: which upstream serves an alias, what a key may spend, and
+# what a repeated request costs. None of them is a deploy of the app.
+#
+# Every secret here is `os.environ/NAME`. The file is tracked, so it holds names,
+# never values -- the same rule the Helm chart follows for the same reason. That
+# is not tidiness: the chart serves this file as a ConfigMap, and a ConfigMap is
+# readable by anyone with `get configmaps`.
+#
+# It lives under the chart's `files/` because Helm's `.Files.Get` cannot reach
+# outside the chart directory, and compose mounts it from here. One file, two
+# deployments: a local `--profile gateway` and a cluster install cannot disagree
+# about which model serves `vinea-nightly`.
+
+model_list:
+  # The alias the application asks for. `VINEA_GATEWAY_MODEL` defaults to it.
+  # Swapping which model serves `vinea-nightly` is an edit here plus a gateway
+  # restart; the app does not learn it happened, and `advisories.model_id` keeps
+  # recording the alias, which is why the five drift tags now need the gateway's
+  # own logs to resolve an alias back to a concrete model. That is a real cost of
+  # the indirection and phase 14's doc says so rather than hiding it.
+  - model_name: vinea-nightly
+    litellm_params:
+      model: anthropic/claude-sonnet-4-5
+      api_key: os.environ/ANTHROPIC_API_KEY
+
+  # The in-gateway failover target. This is provider failover done *inside* the
+  # gateway, which is the cheap version: no key in the pod, no code, and it
+  # covers the case that actually happens (one provider having a bad night).
+  # It does NOT cover the gateway itself being down -- only `FallbackModel` in
+  # the application can, and only if the pod holds a provider key. Two different
+  # failures, two different mechanisms, deliberately not conflated.
+  - model_name: vinea-nightly-fallback
+    litellm_params:
+      model: openai/gpt-4o
+      api_key: os.environ/OPENAI_API_KEY
+
+router_settings:
+  fallbacks: [{ "vinea-nightly": ["vinea-nightly-fallback"] }]
+  # Retries belong to exactly one layer, and phase 8 already argued this: the
+  # worker owns the per-night retry, pydantic-ai owns the per-call ModelRetry,
+  # and a third retrier here would multiply them. One attempt, then the fallback.
+  num_retries: 0
+
+litellm_settings:
+  # Exact-match response caching, keyed on the request itself.
+  #
+  # `type: local` is in-process memory, and choosing it over Redis is ADR-003
+  # being applied rather than re-argued: a cache whose miss is always safe does
+  # not earn a second stateful system. What that buys is real -- re-running a
+  # night, a retried task, two tenants with genuinely identical requests -- and
+  # what it does not buy is stated plainly: nothing survives a gateway restart,
+  # and a second replica has its own cache. Both are acceptable for a nightly
+  # batch; neither would be for an interactive product, and that is the line to
+  # notice rather than the setting.
+  cache: true
+  cache_params:
+    type: local
+    ttl: 86400
+    supported_call_types: ["acompletion", "completion"]
+
+  # NOT enabled, and the reason is the phase's sharpest distinction:
+  #   cache_params.type: redis-semantic / qdrant-semantic
+  # A weak cache key causes staleness, which a better key fixes. Similarity
+  # matching causes wrong answers on correct inputs, which no key fixes, because
+  # nothing in the key is wrong. A depletion of 67.4 mm and 67.6 mm sit a hair
+  # apart in any embedding space and on opposite sides of the irrigation trigger.
+
+  # Spend is attributed per key, and keys are per tenant. This is what turns
+  # `jobs/tenancy.py`'s in-memory call tally into a number that survives a
+  # restart and is shared by every worker.
+  drop_params: true
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Same Postgres INSTANCE as the application, a different DATABASE inside it.
+  # Same instance keeps ADR-003 intact; separate database keeps LiteLLM's Prisma
+  # migrations and our Alembic migrations from ever meeting.
+  #
+  # Note the dialect: LiteLLM speaks Prisma and wants `postgresql://`, while the
+  # app speaks SQLAlchemy and wants `postgresql+psycopg://`. Same server, two URL
+  # spellings, and pasting one into the other's variable fails in a way that
+  # reads like a network problem.
+  database_url: os.environ/LITELLM_DATABASE_URL
+  store_model_in_db: false

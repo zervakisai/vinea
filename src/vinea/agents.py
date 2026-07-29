@@ -16,7 +16,6 @@ from datetime import date
 
 from pydantic_ai import Agent, ModelRetry, RunContext
 
-from . import config
 from .contracts import (
     DailyFarmAdvisory,
     IrrigationAdvice,
@@ -26,6 +25,7 @@ from .contracts import (
     SprayFeatures,
 )
 from .deps import Deps
+from .gateway import resolve_model
 from .ingest import DataQuality
 from .prompts import defaults
 from .prompts import registry as prompts
@@ -246,9 +246,11 @@ _COORD_STATIC = (
 
 # --- agents ----------------------------------------------------------------------
 
-# Model is bound at RUN time (model=config.MODEL), not construction — so importing this module
+# Model is bound at RUN time (model=resolve_model()), not construction — so importing this module
 # needs no API key (the provider is only instantiated on a real run), and tests override it
-# with TestModel (override wins in Agent._get_model, so config.MODEL is never inferred).
+# with TestModel (override wins in Agent._get_model, so the resolved model is never inferred).
+# phase 14 turned that argument into a `str` from resolve_model() when no gateway is configured:
+# a string stays lazy under an override, an eagerly-built Model would not.
 irrigation_agent = Agent(
     deps_type=IrrDeps, output_type=IrrigationAdvice,
     instructions=_IRR_STATIC, retries=2,  # TODO(B2): observability via capabilities=[Instrumentation(...)] + Logfire
@@ -323,13 +325,15 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 
 # --- run helpers (called by the graph nodes; agents are module-level for override) ---
 
-# NOTE: each run helper passes model=config.MODEL even though a test override(model=) wins —
+# NOTE: each run helper passes model=resolve_model() even though a test override(model=) wins —
 # pydantic-ai 1.107 raises UserError under an override if NEITHER agent.model nor a run-time
 # model is set, and the agents are built with no model so import needs no API key.
+# resolve_model() is phase 14's gateway seam: config.MODEL when no gateway is configured,
+# a metered (and optionally failover-wrapped) Model when one is. The agents never learn which.
 
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
     deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
-    res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=config.MODEL)
+    res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=resolve_model())
     out = res.output
     conf, caveat = _degrade(out.confidence, dq)
     return out.model_copy(update={
@@ -340,7 +344,7 @@ async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: Dat
 
 async def run_spray_agent(crop: Deps, features: SprayFeatures, dq: DataQuality, target_date: date, run_date: date) -> SprayAdvice:
     deps = SprayDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date)
-    res = await spray_agent.run(render_spray_input(features), deps=deps, model=config.MODEL)
+    res = await spray_agent.run(render_spray_input(features), deps=deps, model=resolve_model())
     out = res.output
     conf, caveat = _degrade(out.confidence, dq)
     return out.model_copy(update={
@@ -357,7 +361,7 @@ async def run_coordinator_agent(
         crop=crop, irrigation=irrigation, spray=spray,
         conflict_facts=conflict_facts, data_quality=dq, target_date=target_date, run_date=run_date,
     )
-    res = await coordinator_agent.run(render_coordinator_input(deps), deps=deps, model=config.MODEL)
+    res = await coordinator_agent.run(render_coordinator_input(deps), deps=deps, model=resolve_model())
     rec = res.output  # Reconciliation
     conf, caveat = _degrade(rec.overall_confidence, dq)
     # Enforce the invariant by construction: overall can't exceed the most confident leg.

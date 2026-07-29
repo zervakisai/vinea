@@ -2095,6 +2095,9 @@ dependencies = [
 anthropic = [
     { name = "pydantic-ai-slim", extra = ["anthropic"] },
 ]
+gateway = [
+    { name = "pydantic-ai-slim", extra = ["openai"] },
+]
 google = [
     { name = "pydantic-ai-slim", extra = ["google"] },
 ]
@@ -2116,7 +2119,7 @@ ui = [
 dev = [
     { name = "pytest" },
     { name = "ruff" },
-    { name = "vinea", extra = ["anthropic", "google", "groq", "mistral", "openai", "ui"] },
+    { name = "vinea", extra = ["anthropic", "gateway", "google", "groq", "mistral", "openai", "ui"] },
 ]
 
 [package.metadata]
@@ -2134,6 +2137,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["google"], marker = "extra == 'google'", specifier = ">=1.0,<2" },
     { name = "pydantic-ai-slim", extras = ["groq"], marker = "extra == 'groq'", specifier = ">=1.0,<2" },
     { name = "pydantic-ai-slim", extras = ["mistral"], marker = "extra == 'mistral'", specifier = ">=1.0,<2" },
+    { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'gateway'", specifier = ">=1.0,<2" },
     { name = "pydantic-ai-slim", extras = ["openai"], marker = "extra == 'openai'", specifier = ">=1.0,<2" },
     { name = "pydantic-evals", specifier = ">=1.0,<2" },
     { name = "pydantic-graph", specifier = ">=1.0,<2" },
@@ -2142,13 +2146,13 @@ requires-dist = [
     { name = "streamlit", marker = "extra == 'ui'", specifier = ">=1.40" },
     { name = "uvicorn", specifier = ">=0.30" },
 ]
-provides-extras = ["anthropic", "openai", "google", "groq", "mistral", "ui"]
+provides-extras = ["anthropic", "openai", "google", "groq", "mistral", "ui", "gateway"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "pytest", specifier = ">=8,<9" },
     { name = "ruff", specifier = ">=0.8" },
-    { name = "vinea", extras = ["ui", "anthropic", "openai", "google", "groq", "mistral"] },
+    { name = "vinea", extras = ["ui", "gateway", "anthropic", "openai", "google", "groq", "mistral"] },
 ]
 
 [[package]]

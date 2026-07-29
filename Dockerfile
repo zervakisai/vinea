@@ -11,9 +11,16 @@
 # splitting the image follows a line the architecture had already drawn -- see the
 # `ui` extra in pyproject.toml.
 #
-# The <300 MB budget is met by `app`, which is the image that runs three of the
-# four workloads (API, worker CronJob, migration hook). `ui` cannot meet it and is
-# not asked to: pyarrow alone is over a third of the budget.
+# The size budget is aimed at `app`, the image that runs three of the four
+# workloads (API, worker CronJob, migration hook). `ui` cannot meet it and is not
+# asked to: pyarrow alone is over a third of the budget.
+#
+# The budget is aimed at, not met. Phase 13 measured 309 MB against a 300 MB
+# target; rebuilt from that same tag on 2026-07-29 it is 389 MB, with no change
+# to this repository. PYTHON_VERSION below resolves to a floating tag and the
+# base image moved. Pinning it by digest is the fix and it is deliberately NOT
+# applied here -- phase 14 records the finding instead, because a size claim that
+# rotted silently teaches more than a size claim that cannot.
 
 ARG PYTHON_VERSION=3.12
 
@@ -21,6 +28,12 @@ ARG PYTHON_VERSION=3.12
 # time, so shipping all five costs ~50 MB for four that can never be reached.
 # Default matches config.MODEL. Build another with --build-arg PROVIDER=openai.
 ARG PROVIDER=anthropic
+
+# phase 14: add the OpenAI-wire SDK the gateway needs, whatever PROVIDER says.
+# `--build-arg GATEWAY=1` for an image that will be pointed at LiteLLM. Empty (the
+# default) keeps the phase-13 image exactly as it was, which is the point: a
+# gateway is opt-in all the way down to the bytes shipped.
+ARG GATEWAY=
 
 # --------------------------------------------------------------------------- #
 # builder -- resolve and install into /app/.venv                              #
@@ -41,20 +54,21 @@ WORKDIR /app
 # changes every commit, so this ordering keeps the expensive layer cached.
 COPY pyproject.toml uv.lock README.md ./
 ARG PROVIDER
+ARG GATEWAY
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-install-project --extra "${PROVIDER}"
+    uv sync --locked --no-dev --no-install-project --extra "${PROVIDER}" ${GATEWAY:+--extra gateway}
 
 COPY src/ ./src/
 # --no-editable: install the project as a real wheel, so the venv is
 # self-contained and can be copied without carrying `src/` into the runtime.
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}"
+    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway}
 
 # The UI variant is the same resolution plus one extra, so it reuses every layer
 # above rather than resolving from scratch.
 FROM builder AS builder-ui
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" --extra ui
+    uv sync --locked --no-dev --no-editable --extra "${PROVIDER}" ${GATEWAY:+--extra gateway} --extra ui
 
 # --------------------------------------------------------------------------- #
 # runtime-base -- everything both images share                                #

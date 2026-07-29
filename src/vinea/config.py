@@ -42,7 +42,29 @@ _KEY_ENV = {
 }
 
 
-def has_api_key(model: str = MODEL) -> bool:
-    """True if the provider key for `model` is set (or the provider is unknown)."""
+def has_provider_key(model: str = MODEL) -> bool:
+    """True if the provider key for `model` itself is set (or the provider is unknown).
+
+    Phase 1's original `has_api_key`, kept under its own name because phase 14
+    needs the narrow question as well as the wide one. The gateway's failover rung
+    can only exist if the deployment holds a *provider* key next to the virtual
+    key -- and the whole point of virtual keys is that it usually should not.
+    """
     env = _KEY_ENV.get(model.split(":", 1)[0])
     return env is None or bool(os.getenv(env))
+
+
+def has_api_key(model: str = MODEL) -> bool:
+    """True if a model call is possible at all: via a gateway key, or a provider key.
+
+    phase 14 widened the question this answers. A gateway deployment holds a
+    LiteLLM *virtual* key and, by design, may hold no provider key whatsoever --
+    that is the security benefit of running one. Asking for ANTHROPIC_API_KEY
+    there would send every night down the deterministic degrade with a perfectly
+    healthy model one hop away.
+
+    The env var is read directly rather than through `gateway.settings` because
+    `gateway.routing` imports this module; the duplication is one string, and the
+    import cycle it avoids is not worth a lazy import to hide.
+    """
+    return bool(os.getenv("VINEA_GATEWAY_URL")) or has_provider_key(model)

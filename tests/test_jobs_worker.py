@@ -264,3 +264,158 @@ def test_run_worker_drains_the_queue_and_samples_depth(committing_db, monkeypatc
         # S3.4: depth was sampled into the DB as the queue drained.
         samples = s.exec(select(QueueDepthSample)).all()
         assert len(samples) == 3
+
+
+# --- phase 14: cost on the row, and the two ways a gateway says no ----------
+
+
+def test_cost_from_the_run_lands_on_the_advisory_row(committing_db, monkeypatch):
+    """The four columns are written from one object, or not written at all.
+
+    Asserted at the worker rather than in `test_gateway.py` because the claim is
+    about persistence: a ledger that fills up and never reaches a row would pass
+    every test in the gateway module and answer nobody's question about the night.
+    """
+    from vinea.gateway.ledger import RunCost
+    from vinea.jobs import router as router_mod
+    from vinea.obs.instrumented import InstrumentedResult
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
+    monkeypatch.setattr(
+        worker, "route_for", lambda f: router_mod.RouteDecision(router_mod.Route.LARGE_MODEL, "x")
+    )
+
+    features = _features()
+    o_irr, o_spr, o_coord = _grounded_overrides(features)
+    real_run = worker.run_advisory_instrumented
+
+    def _with_cost(*args, **kwargs):
+        result = real_run(*args, **kwargs)
+        return InstrumentedResult(
+            advisory=result.advisory,
+            trace_id=result.trace_id,
+            pre_correction_output=result.pre_correction_output,
+            retried=result.retried,
+            cost=RunCost(input_tokens=3120, output_tokens=284, cost_usd=0.0114, cache_hit=False),
+        )
+
+    monkeypatch.setattr(worker, "run_advisory_instrumented", _with_cost)
+
+    with _session(committing_db) as s:
+        queue.enqueue(s, tenant="acme", run_date=RUN_DATE)
+        s.commit()
+    with o_irr, o_spr, o_coord:
+        with _session(committing_db) as s:
+            task = queue.claim_one(s, worker_id="w1")
+            worker.process_one(s, task, model="openai:gpt-4o-mini")
+
+    with _session(committing_db) as s:
+        row = repository.get_advisory_row(s, tenant="acme", run_date=RUN_DATE)
+        assert (row.input_tokens, row.output_tokens) == (3120, 284)
+        assert row.cost_usd == pytest.approx(0.0114)
+        assert row.cache_hit is False
+
+
+def test_a_night_with_no_model_call_leaves_the_cost_columns_null(committing_db, monkeypatch):
+    """No key -> no call -> four NULLs. Not four zeros.
+
+    Zero would read as "we called the model and it was free", which is the one
+    thing that never happens. The distinction matters the moment someone averages
+    cost per advisory across a month that contained a degraded night.
+    """
+    for var in _KEYS:
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.delenv("VINEA_GATEWAY_URL", raising=False)
+
+    with _session(committing_db) as s:
+        queue.enqueue(s, tenant="acme", run_date=RUN_DATE)
+        s.commit()
+    with _session(committing_db) as s:
+        task = queue.claim_one(s, worker_id="w1")
+        result = worker.process_one(s, task)
+
+    assert result.route == "degraded_no_key"
+    with _session(committing_db) as s:
+        row = repository.get_advisory_row(s, tenant="acme", run_date=RUN_DATE)
+        assert row.input_tokens is None
+        assert row.output_tokens is None
+        assert row.cost_usd is None
+        assert row.cache_hit is None
+
+
+def test_a_budget_refusal_degrades_instead_of_retrying(committing_db, monkeypatch):
+    """The distinction the `gateway.budget` module exists for.
+
+    An outage is transient and belongs in the retry machinery -- 02:00 may be
+    fine at 02:05. A spend ceiling is not: retrying burns the night's attempts
+    against an answer that will not change until a human raises a limit. So the
+    refusal ends the model path, the grower gets the deterministic advisory
+    honestly flagged `degraded`, and the task completes rather than failing.
+    """
+    from pydantic_ai.exceptions import ModelHTTPError
+
+    from vinea.jobs import router as router_mod
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
+    monkeypatch.setattr(
+        worker, "route_for", lambda f: router_mod.RouteDecision(router_mod.Route.LARGE_MODEL, "x")
+    )
+
+    def _refuse(*args, **kwargs):
+        raise ModelHTTPError(
+            status_code=400,
+            model_name="vinea-nightly",
+            body={"error": {"message": "Budget has been exceeded! max_budget: 10.0"}},
+        )
+
+    monkeypatch.setattr(worker, "run_advisory_instrumented", _refuse)
+
+    with _session(committing_db) as s:
+        queue.enqueue(s, tenant="acme", run_date=RUN_DATE)
+        s.commit()
+    with _session(committing_db) as s:
+        task = queue.claim_one(s, worker_id="w1")
+        result = worker.process_one(s, task, model="openai:gpt-4o-mini")
+
+    assert result.status == "done"          # NOT retried
+    assert result.route == "budget_refused"
+    assert result.degraded is True
+    with _session(committing_db) as s:
+        row = repository.get_advisory_row(s, tenant="acme", run_date=RUN_DATE)
+        assert row.degraded is True
+        assert row.model_id is None         # no model produced this
+        assert row.cost_usd is None
+        task = s.exec(select(AdvisoryTask).where(AdvisoryTask.tenant == "acme")).one()
+        assert task.status == "done"
+
+
+def test_an_outage_is_not_mistaken_for_a_budget_refusal(committing_db, monkeypatch):
+    """The other half of the distinction: a 502 still goes to the retry path.
+
+    Getting this backwards is the expensive failure -- every outage would silently
+    become a degraded night that looks like a policy decision, and nobody would
+    ever be paged for a gateway that is simply down.
+    """
+    from pydantic_ai.exceptions import ModelHTTPError
+
+    from vinea.jobs import router as router_mod
+
+    monkeypatch.setenv("OPENAI_API_KEY", "sk-test-not-used")
+    monkeypatch.setattr(
+        worker, "route_for", lambda f: router_mod.RouteDecision(router_mod.Route.LARGE_MODEL, "x")
+    )
+
+    def _outage(*args, **kwargs):
+        raise ModelHTTPError(status_code=502, model_name="vinea-nightly", body="bad gateway")
+
+    monkeypatch.setattr(worker, "run_advisory_instrumented", _outage)
+
+    with _session(committing_db) as s:
+        queue.enqueue(s, tenant="acme", run_date=RUN_DATE, max_attempts=3)
+        s.commit()
+    with _session(committing_db) as s:
+        task = queue.claim_one(s, worker_id="w1")
+        result = worker.process_one(s, task, model="openai:gpt-4o-mini")
+
+    assert result.status.startswith("retry_in_")
+    assert result.route == "error"

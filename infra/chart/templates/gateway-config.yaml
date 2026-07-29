@@ -1,0 +1,23 @@
+{{- if and .Values.gateway.enabled (not .Values.gateway.externalUrl) }}
+# The gateway's config, as a ConfigMap.
+#
+# It is `.Files.Get` of the same `infra/litellm/config.yaml` the compose stack
+# mounts, NOT a second copy templated into the chart. One file, two deployments:
+# a local `docker compose --profile gateway up` and a cluster install cannot
+# disagree about which model serves `vinea-nightly`, which is exactly the drift
+# that makes "it worked locally" a real sentence.
+#
+# It contains no secret values -- every credential in it is `os.environ/NAME`,
+# resolved from the Secret mounted into the pod. A ConfigMap is world-readable to
+# anyone with `get configmaps`, so that property is load-bearing rather than tidy.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vinea.fullname" . }}-gateway
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+data:
+  config.yaml: |
+{{ .Files.Get "files/litellm-config.yaml" | indent 4 }}
+{{- end }}

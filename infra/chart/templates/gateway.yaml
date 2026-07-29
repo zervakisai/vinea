@@ -1,0 +1,102 @@
+{{- if and .Values.gateway.enabled (not .Values.gateway.externalUrl) }}
+# The LLM gateway (phase 14, ADR-007). Rendered only when the chart is asked to
+# run one; `gateway.externalUrl` points the app at a gateway somebody else
+# operates and skips all of this.
+#
+# One replica, and that is a decision rather than a default. LiteLLM's response
+# cache is `type: local` -- in-process memory, chosen over Redis because ADR-003's
+# standing argument ("no second stateful system unless it wins the argument in an
+# ADR") is not defeated by a cache whose miss is always safe. Two replicas would
+# each hold their own cache and halve the hit rate. The moment that trade stops
+# paying, the honest move is a new ADR, not a quiet `replicas: 2` here.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "vinea.fullname" . }}-gateway
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  replicas: 1
+  strategy:
+    # Recreate, not RollingUpdate. A rolling update would briefly run two
+    # gateways, and with an in-process cache that is not a capacity win, it is
+    # two half-warm caches and two spend counters racing on the same key. The
+    # restart is seconds and lands in the deploy window, not the nightly batch.
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: {{ include "vinea.name" . }}
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      app.kubernetes.io/component: gateway
+  template:
+    metadata:
+      labels:
+        {{- include "vinea.labels" . | nindent 8 }}
+        app.kubernetes.io/component: gateway
+      annotations:
+        # Roll the pod when the config changes. Without this, editing the
+        # ConfigMap updates the mounted file but LiteLLM has already read it, and
+        # `helm upgrade` reports success on a gateway still serving the old model
+        # list -- a green deploy that changed nothing.
+        checksum/config: {{ include (print $.Template.BasePath "/gateway-config.yaml") . | sha256sum }}
+    spec:
+      containers:
+        - name: gateway
+          image: {{ .Values.gateway.image }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/etc/litellm/config.yaml", "--port", "{{ .Values.gateway.port }}"]
+          ports:
+            - name: http
+              containerPort: {{ .Values.gateway.port }}
+          envFrom:
+            # The provider keys and LITELLM_MASTER_KEY live in this Secret and,
+            # ideally, nowhere else in the cluster. That is the security case for
+            # the gateway stated as a Kubernetes fact: the app pods get a virtual
+            # key with a ceiling; the unbounded provider key stays here.
+            - secretRef:
+                name: {{ .Values.gateway.secret.name }}
+          # Liveness and readiness are different questions here too, and LiteLLM
+          # gives us both endpoints: /health/liveliness answers from the process,
+          # /health/readiness checks its database connection. Same reasoning as
+          # the API's /health vs /ready -- a liveness probe that fails on a dead
+          # database restarts pods for a fault no restart can fix.
+          livenessProbe:
+            httpGet: {path: /health/liveliness, port: http}
+            initialDelaySeconds: 20
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: {path: /health/readiness, port: http}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            {{- toYaml .Values.gateway.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/litellm
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "vinea.fullname" . }}-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vinea.fullname" . }}-gateway
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: gateway
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: {{ .Values.gateway.port }}
+      targetPort: http
+  selector:
+    app.kubernetes.io/name: {{ include "vinea.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: gateway
+{{- end }}

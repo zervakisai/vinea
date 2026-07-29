@@ -28,6 +28,7 @@ from vinea.db.mapping import (
 )
 from vinea.db.models import Advisory, GrowerConfig
 from vinea.deps import Deps
+from vinea.gateway.ledger import RunCost
 
 # ---------------------------------------------------------------------------
 # advisories
@@ -50,6 +51,7 @@ def save_advisory(
     trace_id: str | None = None,
     degraded: bool = False,
     pre_correction_output: dict | None = None,
+    cost: RunCost | None = None,
 ) -> Advisory:
     """UPSERT one advisory on its (tenant, run_date) idempotency key.
 
@@ -78,6 +80,7 @@ def save_advisory(
         trace_id=trace_id,
         degraded=degraded,
         pre_correction_output=pre_correction_output,
+        cost=cost,
     )
 
     # `id` is autoincrement and `created_at` has a server default: sending either

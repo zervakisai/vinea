@@ -33,6 +33,7 @@ from vinea.contracts import (
 )
 from vinea.db.models import Advisory, GrowerConfig, WeatherObservation
 from vinea.deps import Deps
+from vinea.gateway.ledger import RunCost
 from vinea.ingest import WeatherRow
 
 # ---------------------------------------------------------------------------
@@ -210,6 +211,7 @@ def advisory_to_row(
     trace_id: str | None = None,
     degraded: bool = False,
     pre_correction_output: dict | None = None,
+    cost: RunCost | None = None,
 ) -> Advisory:
     """Render a DailyFarmAdvisory + its provenance as a row.
 
@@ -246,6 +248,12 @@ def advisory_to_row(
         trace_id=trace_id,
         degraded=degraded,
         pre_correction_output=pre_correction_output,
+        # One object in, four columns out, and `None` in means four NULLs -- so a
+        # caller that has no cost information says nothing rather than saying zero.
+        input_tokens=cost.input_tokens if cost else None,
+        output_tokens=cost.output_tokens if cost else None,
+        cost_usd=cost.cost_usd if cost else None,
+        cache_hit=cost.cache_hit if cost else None,
     )
 
 

@@ -193,6 +193,64 @@ services:
       - langfuse_minio_data:/data
     restart: unless-stopped
 
+  # --- phase 14: the LLM gateway. `docker compose --profile gateway up -d` -------
+  #
+  # Behind a profile for the same reason Langfuse is: the default stack must stay
+  # the smallest thing that runs the tests. A gateway is opt-in, and with it off
+  # `resolve_model()` returns the plain model string and nothing in the system
+  # behaves differently.
+  litellm:
+    image: ghcr.io/berriai/litellm:main-v1.65.0-stable
+    profiles: ["gateway"]
+    container_name: vinea-litellm
+    depends_on:
+      postgres:
+        condition: service_healthy
+      litellm-db-init:
+        condition: service_completed_successfully
+    environment:
+      # Provider keys live HERE and, ideally, nowhere else. That is the security
+      # argument for a gateway in one line: the app pod holds a virtual key that
+      # can spend a bounded amount, and the unbounded credential never leaves this
+      # container.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:-sk-vinea-local-master}
+      # Prisma dialect, separate database, same instance -- see infra/litellm/config.yaml.
+      LITELLM_DATABASE_URL: postgresql://${POSTGRES_USER:-vinea}:${POSTGRES_PASSWORD:-vinea}@postgres:5432/litellm
+    volumes:
+      - ./infra/chart/files/litellm-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "${LITELLM_HOST_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:4000/health/liveliness',timeout=4).status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    restart: unless-stopped
+
+  # One-shot: create the `litellm` database beside `vinea` in the same server.
+  # `CREATE DATABASE IF NOT EXISTS` does not exist in Postgres, hence the SELECT-
+  # then-create dance, which is also idempotent under `up` being run twice.
+  litellm-db-init:
+    image: postgres:16
+    profiles: ["gateway"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-vinea}
+    entrypoint:
+      - sh
+      - -c
+      - |
+        psql -h postgres -U ${POSTGRES_USER:-vinea} -d ${POSTGRES_DB:-vinea} -tc \
+          "SELECT 1 FROM pg_database WHERE datname = 'litellm'" | grep -q 1 \
+          || psql -h postgres -U ${POSTGRES_USER:-vinea} -d ${POSTGRES_DB:-vinea} -c "CREATE DATABASE litellm"
+    restart: "no"
+
 volumes:
   postgres_data:
   langfuse_db_data:

@@ -37,6 +37,8 @@ from vinea.db.models import AdvisoryTask, GrowerConfig
 from vinea.db.session import make_engine
 from vinea.deps import WINE_GRAPES, Deps
 from vinea.features import build_features
+from vinea.gateway import is_budget_refusal
+from vinea.gateway.ledger import RunCost
 from vinea.ingest import WeatherLoadResult
 from vinea.jobs import metrics, queue
 from vinea.jobs.degraded import build_degraded_advisory
@@ -49,7 +51,8 @@ from vinea.sources.csv_source import CsvSource
 class ProcessResult:
     task_id: int
     status: str  # 'done' | 'failed' | 'retry_in_...'
-    route: str  # 'degraded_no_key' | 'skip_model' | 'large_model' | 'error'
+    # 'degraded_no_key' | 'skip_model' | 'large_model' | 'budget_refused' | 'error'
+    route: str
     degraded: bool
 
 
@@ -121,6 +124,7 @@ def process_one(
         # --- the three-way choice, made from features + config, no model yet ---
         trace_id: str | None = None
         pre_correction: dict | None = None
+        cost = RunCost(input_tokens=None, output_tokens=None, cost_usd=None, cache_hit=None)
 
         if not config.has_api_key(model):
             advisory = build_degraded_advisory(features, list(load_result.forecast), deps)
@@ -136,13 +140,34 @@ def process_one(
                 # (S4.4). It's a no-op wrapper when tracing is off, so the worker
                 # always uses it -- pre-correction capture doesn't need OTel, and
                 # trace_id is simply None without it.
-                instrumented = run_advisory_instrumented(
-                    load_result, deps, model=model, tenant=task.tenant, run_date=task.run_date
-                )
-                advisory = instrumented.advisory
-                trace_id = instrumented.trace_id
-                pre_correction = instrumented.pre_correction_output
-                route, degraded, model_id = "large_model", False, model
+                try:
+                    instrumented = run_advisory_instrumented(
+                        load_result, deps, model=model, tenant=task.tenant, run_date=task.run_date
+                    )
+                except Exception as exc:  # noqa: BLE001 -- re-raised unless it is a budget refusal
+                    # phase 14. The gateway being *unreachable* never reaches here:
+                    # FallbackModel already tried the direct provider, and if there
+                    # was none, the exception below is an outage and falls through
+                    # to the retry machinery, which is correct -- an outage at 02:00
+                    # may be over at 02:05.
+                    #
+                    # A *budget refusal* is the opposite: retrying it burns the
+                    # night's attempts against an answer that will not change until
+                    # a human raises a limit. So it terminates the model path here
+                    # and the grower gets the deterministic advisory -- real physics,
+                    # honestly flagged -- instead of an error or three more refusals.
+                    if not is_budget_refusal(exc):
+                        raise
+                    advisory = build_degraded_advisory(
+                        features, list(load_result.forecast), deps
+                    )
+                    route, degraded, model_id = "budget_refused", True, None
+                else:
+                    advisory = instrumented.advisory
+                    trace_id = instrumented.trace_id
+                    pre_correction = instrumented.pre_correction_output
+                    cost = instrumented.cost
+                    route, degraded, model_id = "large_model", False, model
 
         # Persist advisory and mark the task done in ONE transaction, so the two
         # land together (queue.mark_done does not commit).
@@ -156,6 +181,7 @@ def process_one(
             degraded=degraded,
             trace_id=trace_id,
             pre_correction_output=pre_correction,
+            cost=cost,
         )
         queue.mark_done(session, task, advisory_id=saved.id)
         session.commit()

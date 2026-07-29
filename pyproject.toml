@@ -69,6 +69,13 @@ ui = [
     "pandas>=2.0",
 ]
 
+# phase 14 (gateway). Its own name rather than telling people to add `openai`,
+# because the reason is not the provider: LiteLLM speaks the OpenAI wire format,
+# so routing an *Anthropic* model through the gateway still needs the openai SDK
+# in the image. An image built with PROVIDER=anthropic and no gateway extra fails
+# at `import openai` the first night it is pointed at a gateway.
+gateway = ["pydantic-ai-slim[openai]>=1.0,<2"]
+
 [project.scripts]
 # `uv run vinea` is the one command (resolve + install + run, no venv activation).
 vinea = "vinea.cli:main"
@@ -79,7 +86,7 @@ dev = [
     "ruff>=0.8",
     # Self-reference to the ui extra so a bare `uv sync` still installs Streamlit:
     # dev groups ARE installed by default, extras are not.
-    "vinea[ui,anthropic,openai,google,groq,mistral]",
+    "vinea[ui,gateway,anthropic,openai,google,groq,mistral]",
 ]
 
 [build-system]

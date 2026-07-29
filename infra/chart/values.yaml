@@ -64,6 +64,30 @@ migrate:
     requests: {cpu: 50m, memory: 192Mi}
     limits: {memory: 512Mi}
 
+# The LLM gateway (phase 14). Off by default, and that default is the phase's
+# main claim: with `enabled: false` no VINEA_GATEWAY_URL is set, `resolve_model()`
+# returns the plain model string, and the deployment is byte-for-byte the phase-13
+# one. Turning it on is a values change.
+gateway:
+  enabled: false
+  image: ghcr.io/berriai/litellm:main-v1.65.0-stable
+  port: 4000
+  # The alias the app asks for. Which upstream serves it lives in
+  # files/litellm-config.yaml, i.e. in the gateway, not in this deployment.
+  model: vinea-nightly
+  # Point at a gateway somebody else operates. Set this and the chart renders no
+  # Deployment, no Service and no ConfigMap -- it only tells the app where to go.
+  externalUrl: ""
+  # Holds the PROVIDER keys and LITELLM_MASTER_KEY. A different Secret from
+  # `secret.name` on purpose: the app pods must be able to read their own Secret
+  # and must NOT be able to read this one. Same-Secret-for-everything would hand
+  # every workload the unbounded provider key and undo the reason for the gateway.
+  secret:
+    name: vinea-gateway-secrets
+  resources:
+    requests: {cpu: 100m, memory: 384Mi}
+    limits: {memory: 1Gi}
+
 ingress:
   enabled: false
   className: ""

@@ -11,7 +11,7 @@ from __future__ import annotations
 import streamlit as st
 
 from vinea.ui.client import ApiClient
-from vinea.ui.panels import grower, operator, quality
+from vinea.ui.panels import cost, grower, operator, quality
 
 
 def main() -> None:
@@ -24,7 +24,7 @@ def main() -> None:
         st.markdown("### Panels")
         panel = st.radio(
             "View",
-            ["Grower view", "Operator overview", "Quality monitor"],
+            ["Grower view", "Operator overview", "Quality monitor", "Cost"],
             label_visibility="collapsed",
         )
         st.divider()
@@ -41,6 +41,8 @@ def main() -> None:
         grower.render(client)
     elif panel == "Operator overview":
         operator.render(client)
+    elif panel == "Cost":
+        cost.render(client)
     else:
         quality.render(client)
 

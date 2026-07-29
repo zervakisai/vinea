@@ -1,4 +1,4 @@
-# The twelve phases
+# The phases
 
 Each phase is one tagged commit and one lesson. `git checkout phase-NN` gives you
 the project exactly as it stood there, and `uv run pytest` is green at every tag.
@@ -17,27 +17,32 @@ the project exactly as it stood there, and `uv run pytest` is green at every tag
 | 10 | API | `phase-10` | [10](10-api.md) |
 | 11 | Dashboard | `phase-11` | [11](11-dashboard.md) |
 | 12 | Prompt registry & eval gate | `phase-12` | [12](12-prompts-and-evals.md) |
+| 13 | Containerize & deploy | `phase-13` | [13](13-containerize-and-deploy.md) |
+| 14 | LLM gateway & cost | `phase-14` | [14](14-gateway-and-cost.md) |
 
 ## How to read this
 
 The phases are not equal in kind. **1–4 build the thing**: ingestion, physics,
 agents, robustness. **5 stops and argues** — a design essay written before any of
 the rest existed. **6–12 carry that argument out**, one production concern at a
-time.
+time. **13 onward is what happens after it leaves the laptop**: deployment,
+then the operational questions a running system starts asking — what did it cost,
+who may spend, and what happens when the thing in front of the model says no.
 
 The single claim the whole sequence is arranged to demonstrate is that the
 **physics and the topology** from phases 1–4 never have to change again:
 
 ```bash
-git diff --ignore-blank-lines phase-04 phase-12 -- \
+git diff --ignore-blank-lines phase-04 phase-14 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 ```
 
 Note how narrowly that has to be stated to stay true. `ingest.py` and `config.py`
 grow (additively — nothing removed). `agents.py` and `cli.py` genuinely change:
-phase 12 swaps the instruction f-strings for registry lookups, and the CLI gains
-a `--source` flag. Those are the *wiring* at the edges, not the reasoning.
+phase 12 swaps the instruction f-strings for registry lookups, phase 14 swaps
+`model=config.MODEL` for `model=resolve_model()`, and the CLI gains a `--source`
+flag. Those are the *wiring* at the edges, not the reasoning.
 
 Every later phase adds a layer *around* the deterministic core rather than
 reaching into it. When a phase does force a change, that is worth noticing — and

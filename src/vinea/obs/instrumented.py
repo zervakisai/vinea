@@ -30,6 +30,7 @@ from pydantic_ai.messages import RetryPromptPart, ToolCallPart
 
 from vinea.contracts import DailyFarmAdvisory
 from vinea.deps import Deps
+from vinea.gateway.ledger import RunCost, ledger_scope
 from vinea.graph import run_advisory_sync
 from vinea.ingest import WeatherLoadResult
 from vinea.obs.tracing import current_trace_id
@@ -43,6 +44,9 @@ class InstrumentedResult:
     trace_id: str | None
     pre_correction_output: dict | None
     retried: bool
+    # phase 14. All-NULL when no gateway is configured and no model was metered --
+    # the row then says "unknown", which is what it is.
+    cost: RunCost = RunCost(input_tokens=None, output_tokens=None, cost_usd=None, cache_hit=None)
 
 
 def _extract_pre_correction(messages: list) -> tuple[dict | None, bool]:
@@ -106,7 +110,13 @@ def run_advisory_instrumented(
 
         trace_id = current_trace_id()
 
-        with capture_run_messages() as messages:
+        # The ledger wraps the run rather than living inside the graph, for the
+        # same reason the root span does: the graph computes the advice and has no
+        # business knowing that anyone is counting. It survives the `asyncio.run`
+        # inside `run_advisory_sync` because a ContextVar holding a *mutable*
+        # object is copied by reference into the new task's context -- appends
+        # from in there land on this object.
+        with ledger_scope() as ledger, capture_run_messages() as messages:
             advisory = run_advisory_sync(
                 list(load_result.history),
                 list(load_result.forecast),
@@ -115,12 +125,25 @@ def run_advisory_instrumented(
                 deps,
             )
 
+        cost = RunCost.from_ledger(ledger)
         pre_correction, retried = _extract_pre_correction(list(messages))
         span.set_attribute("vinea.retried", retried)
+        # On the span as well as the row. The row is what an operator queries a
+        # month later; the span is what they look at while the night is still
+        # running, and a trace that shows latency but not spend answers half the
+        # question people actually have about an LLM system.
+        if cost.input_tokens is not None:
+            span.set_attribute("gen_ai.usage.input_tokens", cost.input_tokens)
+            span.set_attribute("gen_ai.usage.output_tokens", cost.output_tokens or 0)
+        if cost.cost_usd is not None:
+            span.set_attribute("vinea.cost_usd", cost.cost_usd)
+        if cost.cache_hit is not None:
+            span.set_attribute("vinea.cache_hit", cost.cache_hit)
 
     return InstrumentedResult(
         advisory=advisory,
         trace_id=trace_id,
         pre_correction_output=pre_correction,
         retried=retried,
+        cost=cost,
     )

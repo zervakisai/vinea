@@ -101,6 +101,42 @@ echo "$revision" | grep -q "(head)" \
   || { echo "schema is not at head: ${revision:-<no output>}" >&2; exit 1; }
 echo "alembic: at head ($(echo "$revision" | grep -o '^[0-9a-f]*' | head -1))"
 
+step "assert: the default deploy carries no gateway (phase 14)"
+# Phase 14's central claim, checked against a live pod rather than a rendered
+# template: with `gateway.enabled=false` nothing tells the app a gateway exists,
+# so `resolve_model()` returns the plain model string and this deployment is the
+# phase-13 one. A cluster that quietly grew a VINEA_GATEWAY_URL would mean the
+# "no gateway changes nothing" guarantee had become "no gateway is untested".
+#
+# The gateway itself is not installed here: LiteLLM needs a provider key to be
+# worth starting, CI has none, and a proxy with no upstream proves nothing that
+# `helm template` does not already prove offline. Said out loud because a silent
+# gap reads like coverage.
+gateway_env=$(kubectl get deploy "${RELEASE}-vinea-api" \
+  -o jsonpath='{.spec.template.spec.containers[0].env[?(@.name=="VINEA_GATEWAY_URL")].value}')
+[[ -z "$gateway_env" ]] || { echo "api pod has VINEA_GATEWAY_URL=$gateway_env in the default deploy" >&2; exit 1; }
+echo "no VINEA_GATEWAY_URL on the api pod (correct for gateway.enabled=false)"
+
+step "assert: the expand migration added the cost columns (phase 14)"
+# The pre-upgrade hook ran (asserted above); this asserts what it *did*. Four
+# additive nullable columns, and the nullability is the claim: a server_default
+# would make every advisory written before tonight report that it cost zero.
+columns=$(kubectl run cost-columns --rm -i --restart=Never --image=vinea:e2e \
+  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+  --command -- python -c "
+import os
+from sqlalchemy import create_engine, text
+e = create_engine(os.environ['DATABASE_URL'])
+with e.connect() as c:
+    rows = c.execute(text(\"select column_name, is_nullable, column_default from information_schema.columns where table_name='advisories' and column_name in ('input_tokens','output_tokens','cost_usd','cache_hit') order by column_name\")).all()
+print(';'.join(f'{n}:{null}:{default}' for n, null, default in rows))
+" 2>/dev/null || true)
+for col in cache_hit cost_usd input_tokens output_tokens; do
+  echo "$columns" | grep -q "${col}:YES:None" \
+    || { echo "cost column ${col} missing or not nullable-without-default: ${columns:-<no output>}" >&2; exit 1; }
+done
+echo "cost columns: present, nullable, no default"
+
 step "smoke test THROUGH the API, with a real key"
 # Not `curl /health`. A smoke test that proves a container started is theatre --
 # it would pass with an empty database and a broken schema. This one authenticates,
