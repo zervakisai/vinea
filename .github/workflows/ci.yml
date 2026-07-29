@@ -120,7 +120,9 @@ jobs:
       # LOW findings with no fix available, and a gate that is red for reasons
       # nobody can act on is a gate that gets disabled.
       - name: Scan the image
-        uses: aquasecurity/trivy-action@0.28.0
+        # Pinned to a tag that exists -- `0.28.0` (no `v`) does not, and CI said
+        # so with 'unable to find version' rather than by silently skipping.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: vinea:scan
           format: table
