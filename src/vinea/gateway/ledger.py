@@ -57,13 +57,34 @@ class Ledger:
     # make a chars-per-token calibration a measurement rather than a restatement
     # of the assumption it is meant to check.
     prompt_chars: int = 0
+    # phase 18, repaying a phase-14 debt. `advisories.model_id` records the
+    # gateway ALIAS (`vinea-nightly`), which is the point of an alias and also
+    # weakens one of B2's five drift tags: a year later, "which model produced
+    # this?" needs the gateway's own logs. The provider echoes a model name in
+    # every response; this records the LAST one seen, which for a single-model
+    # advisory is the model that served it.
+    #
+    # Honest limit: what LiteLLM echoes depends on its configuration. If it
+    # returns the alias, this records the alias and the tag is no better than it
+    # was -- but the mechanism is in place and the failure is visible in a column
+    # rather than invisible in a design.
+    resolved_model: str | None = None
 
-    def record_usage(self, *, input_tokens: int, output_tokens: int, prompt_chars: int = 0) -> None:
+    def record_usage(
+        self,
+        *,
+        input_tokens: int,
+        output_tokens: int,
+        prompt_chars: int = 0,
+        model_name: str | None = None,
+    ) -> None:
         """From the SDK's `ModelResponse.usage`, plus what we sent to earn it."""
         self.calls += 1
         self.input_tokens += input_tokens
         self.output_tokens += output_tokens
         self.prompt_chars += prompt_chars
+        if model_name:
+            self.resolved_model = model_name
 
     def record_gateway_headers(self, *, cost_usd: float | None, cache_hit: bool | None) -> None:
         """From the gateway's response headers. Available only behind a gateway."""

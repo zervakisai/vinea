@@ -35,6 +35,7 @@ from vinea.api.schemas import (
     HealthResponse,
     QueueDepthPoint,
     QueueDepthResponse,
+    SLOStatus,
 )
 from vinea.db import repository
 from vinea.db.session import make_engine, scope_to_ops, scope_to_tenant
@@ -266,6 +267,44 @@ def ops_advisories(
     """
     rows = repository.list_all_advisory_rows(session, start=from_, end=to, limit=limit)
     return [AdvisorySummary.from_row(r) for r in rows]
+
+
+@app.get("/ops/slo", response_model=list[SLOStatus])
+def ops_slo(
+    session: Session = Depends(ops_session),
+    today: date | None = Query(default=None),
+) -> list[SLOStatus]:
+    """The three objectives, measured. Ops-gated because SLIs are cross-tenant.
+
+    Served from the API rather than a `/metrics` scrape target, for the reason
+    ADR-010 gives: nothing in this deployment scrapes, and an endpoint whose
+    format assumes a collector that does not exist is a format nobody reads. The
+    UI reaches it through `ApiClient` like every other panel (ADR-005).
+    """
+    from vinea.slo import error_budget, measure_all
+
+    results = measure_all(session, today=today or date.today())
+    out: list[SLOStatus] = []
+    for result in results:
+        budget = error_budget(result)
+        out.append(
+            SLOStatus(
+                key=result.objective.key,
+                description=result.objective.description,
+                target=result.objective.target,
+                unit=result.objective.unit,
+                window_days=result.objective.window_days,
+                value=result.value,
+                met=result.met,
+                sample_size=result.sample_size,
+                budget_allowed=budget.allowed_failures if budget else None,
+                budget_observed=budget.observed_failures if budget else None,
+                budget_remaining=budget.remaining if budget else None,
+                budget_exhausted=budget.exhausted if budget else None,
+                policy=budget.policy if budget else None,
+            )
+        )
+    return out
 
 
 def _existing_task(session: Session, *, tenant: str, run_date: date) -> bool:

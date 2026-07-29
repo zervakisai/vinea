@@ -188,6 +188,19 @@ class GrowerConfig(SQLModel, table=True):
     # Region as a config value on the tenant record, not a code path -- the
     # EU-residency point from DESIGN.md B1.
     region: str = Field(sa_column=Column(Text, nullable=False))
+    # phase 18. The SLO is "an advisory by 06:00 LOCAL", and a vineyard in Nemea
+    # and one in Mendoza do not share a morning. An IANA zone name, not an offset:
+    # offsets move twice a year and a stored one is wrong for half of it.
+    #
+    # On the tenant record rather than in `Deps`, alongside `region` and for the
+    # same reason -- it describes where a grower is, not how a crop behaves, and
+    # `Deps` is the crop's contract. It is also protected by the invariant, which
+    # settles the question rather than merely arguing it.
+    #
+    # Nullable with a default of UTC applied on read: existing rows predate the
+    # column, and a fabricated local time would silently move every SLI. Empty
+    # means "we do not know this grower's morning", and the SLI says so.
+    timezone: str | None = Field(default=None, sa_column=Column(Text))
 
     # deps.Deps, field for field (tuples flattened). raw_mm intentionally absent.
     crop: str = Field(sa_column=Column(Text, nullable=False))

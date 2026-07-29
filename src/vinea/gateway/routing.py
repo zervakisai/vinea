@@ -103,6 +103,9 @@ class MeteredModel(WrapperModel):
                 # request. Paired here so `context.calibration_ratio` divides two
                 # numbers from the SAME call rather than a total by an assumption.
                 prompt_chars=_prompt_chars(messages),
+                # phase 18: what the provider says served this call, as opposed
+                # to the alias we asked for.
+                model_name=response.model_name,
             )
         return response
 

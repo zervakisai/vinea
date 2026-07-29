@@ -159,6 +159,30 @@ class QueueDepthPoint(BaseModel):
         )
 
 
+class SLOStatus(BaseModel):
+    """One objective, its measurement, and what the budget says to do.
+
+    `value` and `met` are both nullable, together. An objective that is written
+    down but not collected -- read latency, as things stand (ADR-010) -- reports
+    null rather than a plausible number, because "no advisories were late" and
+    "we could not tell" look identical on a dashboard and mean opposite things.
+    """
+
+    key: str
+    description: str
+    target: float
+    unit: str
+    window_days: int
+    value: float | None
+    met: bool | None
+    sample_size: int
+    budget_allowed: float | None = None
+    budget_observed: int | None = None
+    budget_remaining: float | None = None
+    budget_exhausted: bool | None = None
+    policy: str | None = None
+
+
 class HealthResponse(BaseModel):
     status: str
     database: str
