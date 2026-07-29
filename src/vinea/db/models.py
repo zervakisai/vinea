@@ -342,6 +342,12 @@ class Advisory(SQLModel, table=True):
     # a corpus that may since have been re-chunked (ADR-001, same argument as
     # `advisory_citations.locator`).
     context_chars: int | None = Field(default=None, sa_column=Column(Integer))
+    # What the provider reported as serving the call, when a gateway is in the
+    # path. `model_id` above records what we *asked* for -- which behind a gateway
+    # is an alias like `vinea-nightly`, and an alias does not identify a model a
+    # year later. This is the concrete answer when the gateway supplies one, and
+    # NULL when it does not.
+    served_model: str | None = Field(default=None, sa_column=Column(Text))
 
     created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 
@@ -667,14 +673,18 @@ class AdvisoryCitation(SQLModel, table=True):
     # a specific question -- there is no "cited the advisory as a whole".
     leg: str = Field(sa_column=Column(Text, nullable=False))
 
-    chunk_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("corpus_chunks.id", ondelete="CASCADE"), nullable=False)
+    # SET NULL, not CASCADE. `corpus_chunks` is a cache and may be truncated or
+    # re-chunked at any time; what was cited on a given night is not recomputable
+    # and must survive that. CASCADE would delete the whole citation row --
+    # including the locator below, which exists precisely so a reader can still
+    # find the passage after the index is rebuilt.
+    chunk_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("corpus_chunks.id", ondelete="SET NULL")),
     )
-    # Denormalised from corpus_chunks on purpose, and the exception proves the
-    # rule. `corpus_chunks` is a cache and may be truncated or re-chunked; if that
-    # happens, a citation whose locator lived only behind the foreign key becomes
-    # a dangling number. What was cited on a given night is not recomputable, so
-    # by ADR-001 it is stored.
+    # Denormalised from corpus_chunks, and it is the durable half of the pair:
+    # `chunk_id` points into a cache, `locator` is the human-readable citation.
+    # After a re-ingest the id may be NULL and this still says "Chapter 8".
     locator: str = Field(sa_column=Column(Text, nullable=False))
     rank: int = Field(sa_column=Column(Integer, nullable=False))
 

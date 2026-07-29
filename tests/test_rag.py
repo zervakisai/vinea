@@ -27,6 +27,7 @@ import pytest
 
 from vinea.rag import citations, corpus, retrieve
 from vinea.rag.embedding import EMBEDDING_DIM, HashEmbedder
+from vinea.rag.retrieve import REFERENCE_CONTRACT
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 QUESTIONS = json.loads((REPO_ROOT / "tests" / "fixtures" / "rag_questions.json").read_text())["questions"]
@@ -194,8 +195,16 @@ def test_retrieval_returns_nothing_and_does_not_raise_without_a_database(monkeyp
     def _no_database(*_args, **_kwargs):
         raise RuntimeError("connection refused")
 
+    # The cache has to be cleared first, and that is the point rather than test
+    # bookkeeping: `retrieve_for` reuses an engine across advisories, so a live
+    # one from an earlier test would sail straight past this monkeypatch and the
+    # test would pass while proving nothing.
+    retrieve.reset_engine_cache()
     monkeypatch.setattr("vinea.db.session.make_engine", _no_database)
-    assert retrieve.retrieve_for("irrigation", "readily available water") == []
+    try:
+        assert retrieve.retrieve_for("irrigation", "readily available water") == []
+    finally:
+        retrieve.reset_engine_cache()
 
 
 def test_no_passages_renders_to_an_empty_string():
@@ -219,8 +228,10 @@ def test_rendered_passages_forbid_recomputation_in_the_imperative():
         leg="irrigation", chunk_id=1, locator="Chapter 8", text="RAW = p x TAW", rank=1
     )
     rendered = retrieve.render_passages([passage])
-    assert "Do not recompute" in rendered
-    assert "the configuration is correct" in rendered
+    # Asserted against the exported contract, not the sentence. Rewording the
+    # framing must not turn a prose edit into a red build -- that is how an
+    # assertion gets deleted instead of the risk it guards.
+    assert all(rule in rendered for rule in REFERENCE_CONTRACT)
     assert "CC BY 4.0" in rendered  # the licence travels with the quoted text
     assert "Chapter 8" in rendered
 
@@ -439,3 +450,61 @@ def test_the_two_halves_of_the_hybrid_miss_different_questions(db_session):
         f"hybrid ({hybrid}/{len(QUESTIONS)}) is no better than lexical alone "
         f"({lexical_only}/{len(QUESTIONS)}); the dense half is not paying for itself"
     )
+
+
+@pytest.mark.db
+def test_a_citation_survives_the_corpus_being_reingested(db_engine):
+    """The record of what was cited outlives the index it points into.
+
+    `corpus_chunks` is a cache: `TRUNCATE` is meant to be always safe, and
+    re-chunking reassigns every id. Under the original `ON DELETE CASCADE` that
+    deleted the whole citation row -- including the denormalised `locator`, the
+    one field added precisely so a citation stays readable afterwards. The claim
+    "TRUNCATE corpus_chunks is always safe" was false, and silently so.
+
+    `SET NULL` keeps the row: the link to the passage is gone, the citation is
+    not.
+    """
+    from sqlalchemy import text as sql
+    from sqlmodel import Session
+
+    from vinea.db.models import AdvisoryCitation
+    from vinea.db.session import scope_to_ops
+    from vinea.rag.store import ingest
+
+    with Session(db_engine) as session:
+        scope_to_ops(session)
+        session.execute(sql("DELETE FROM advisories WHERE tenant = 'cite-test'"))
+        advisory_id = session.execute(
+            sql(
+                "INSERT INTO advisories (tenant, run_date, target_date, irrigation, spray, "
+                "reconciliation, deps_hash) VALUES ('cite-test', '2026-01-02', '2026-01-03', "
+                "'{}', '{}', '{}', 'h') RETURNING id"
+            )
+        ).scalar_one()
+        ingest(session, corpus.load_corpus()[:5], source="cite-test", embedder=HashEmbedder())
+        chunk_id = session.execute(
+            sql("SELECT id FROM corpus_chunks WHERE source = 'cite-test' ORDER BY id LIMIT 1")
+        ).scalar_one()
+        session.add(
+            AdvisoryCitation(
+                advisory_id=advisory_id, leg="irrigation", chunk_id=chunk_id,
+                locator="Chapter 8 — ETc under soil water and salinity stress conditions", rank=1,
+            )
+        )
+        session.commit()
+
+        # Re-ingest: the cache is rebuilt and every id is reassigned.
+        session.execute(sql("DELETE FROM corpus_chunks WHERE source = 'cite-test'"))
+        session.commit()
+
+        surviving = session.execute(
+            sql("SELECT chunk_id, locator FROM advisory_citations WHERE advisory_id = :a"),
+            {"a": advisory_id},
+        ).all()
+        session.execute(sql("DELETE FROM advisories WHERE tenant = 'cite-test'"))
+        session.commit()
+
+    assert len(surviving) == 1, "the citation was deleted with the cache it pointed into"
+    assert surviving[0][0] is None                      # the link is gone
+    assert surviving[0][1].startswith("Chapter 8")      # the citation is not

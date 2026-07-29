@@ -106,6 +106,9 @@ class RunCost:
     # point, and a character count with no token count beside it calibrates
     # nothing.
     context_chars: int | None = None
+    # What the provider said served the call, when it says anything. `model_id`
+    # on the row records what was *asked* for, which behind a gateway is an alias.
+    served_model: str | None = None
 
     @classmethod
     def from_ledger(cls, ledger: Ledger) -> RunCost:
@@ -127,6 +130,7 @@ class RunCost:
             cost_usd=ledger.cost_usd,
             cache_hit=all(ledger.cache_flags) if ledger.cache_flags else None,
             context_chars=ledger.prompt_chars or None,
+            served_model=ledger.resolved_model,
         )
 
 

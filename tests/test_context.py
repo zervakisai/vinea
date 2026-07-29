@@ -227,13 +227,12 @@ def test_retrieved_passages_are_framed_as_background_not_as_input():
     """The framing is the safeguard that keeps FAO-56's Kc tables out of the
     arithmetic. It survives every slimming by being asserted here."""
     from vinea.rag.citations import RetrievedPassage
-    from vinea.rag.retrieve import render_passages
+    from vinea.rag.retrieve import REFERENCE_CONTRACT, render_passages
 
     rendered = render_passages(
         [RetrievedPassage(leg="irrigation", chunk_id=1, locator="Chapter 8", text="RAW = p x TAW", rank=1)]
     )
-    assert "Do not recompute" in rendered
-    assert "the configuration is correct" in rendered
+    assert all(rule in rendered for rule in REFERENCE_CONTRACT)
 
 
 # --------------------------------------------------------------------------- #

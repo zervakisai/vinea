@@ -36,7 +36,7 @@ from vinea.db.session import APP_ROLE, scope_to_ops, scope_to_tenant
 from vinea.deps import WINE_GRAPES
 from vinea.features import build_features
 from vinea.ingest import load_weather
-from vinea.rag.retrieve import render_passages
+from vinea.rag.retrieve import REFERENCE_CONTRACT, render_passages
 
 RUN_DATE = date(2026, 7, 28)
 pytestmark = pytest.mark.db
@@ -284,8 +284,7 @@ def test_retrieved_passages_are_marked_as_data_not_instruction():
     rendered = render_passages(
         [RetrievedPassage(leg="irrigation", chunk_id=1, locator="Chapter 8", text="x", rank=1)]
     )
-    assert "background, not inputs" in rendered
-    assert "Do not recompute" in rendered
+    assert all(rule in rendered for rule in REFERENCE_CONTRACT)
 
 
 # --------------------------------------------------------------------------- #

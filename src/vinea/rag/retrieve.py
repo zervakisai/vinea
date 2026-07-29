@@ -40,6 +40,33 @@ logger = logging.getLogger(__name__)
 # query and the tests cannot drift apart on a string literal.
 SOURCE = "fao56"
 
+# The instruction that separates reference material from input data.
+#
+# A named constant rather than a literal inside `render_passages`, because the
+# tests that assert this framing survives are asserting a *contract*, not a
+# sentence -- pinning the prose makes any rewording a red build for no reason,
+# and encourages the next person to delete the assertion instead of the risk.
+#
+# Reworded freely; what must not change is that it (a) marks the text as
+# background, (b) forbids taking numbers from it, and (c) says the configuration
+# wins when they disagree. `tests/test_rag.py` checks those three properties.
+REFERENCE_PREAMBLE = (
+    "REFERENCE MATERIAL — FAO Irrigation and Drainage Paper 56 (CC BY 4.0).\n"
+    "Use these passages ONLY to explain and attribute your reasoning in prose. "
+    "They are background, not inputs. Every numeric value you report must come "
+    "from the computed features supplied above; if a passage states a coefficient "
+    "or a threshold that differs from the configuration you were given, the "
+    "configuration is correct and the passage is context. Do not recompute anything."
+)
+
+# The three properties that framing must keep, whatever the wording. Tests assert
+# against these rather than against the sentence.
+REFERENCE_CONTRACT = (
+    "background, not inputs",       # marked as reference, not data
+    "Do not recompute",             # no arithmetic on retrieved numbers
+    "configuration is correct",     # config wins any disagreement
+)
+
 # How many passages the *query* returns. Phase 15 chose three because three is a
 # reasonable-looking number, and phase 16 measured what that bought: 4 217
 # characters, 64% of the irrigation leg's entire context.
@@ -50,6 +77,33 @@ SOURCE = "fao56"
 # 3 600. `DEFAULT_LEG_TOKEN_BUDGET` is the real bound; this is now just how deep
 # the ranking is read before the budget decides.
 TOP_K = 3
+
+
+# One engine per database URL, reused across advisories.
+#
+# `db.session` deliberately builds a fresh engine per caller so nothing owns a
+# process-wide pool -- right for the API and the worker, which each create one
+# and hold it for their lifetime. It is wrong here: `retrieve_for` runs twice per
+# advisory from inside the graph, so `make_engine()` per call meant a new
+# connection pool per call, used for one query and dropped without being
+# disposed. Keyed on the URL so a test that repoints DATABASE_URL gets its own.
+_ENGINES: dict[str, object] = {}
+
+
+def _engine():
+    from vinea.db.session import database_url, make_engine
+
+    url = database_url()
+    if url not in _ENGINES:
+        _ENGINES[url] = make_engine(url)
+    return _ENGINES[url]
+
+
+def reset_engine_cache() -> None:
+    """Dispose and forget the cached engines. For tests that change the URL."""
+    for engine in _ENGINES.values():
+        engine.dispose()
+    _ENGINES.clear()
 
 
 def retrieve_for(
@@ -69,12 +123,11 @@ def retrieve_for(
     try:
         from sqlmodel import Session
 
-        from vinea.db.session import make_engine
         from vinea.rag.embedding import get_embedder
         from vinea.rag.store import search
 
         embedder = get_embedder()
-        with Session(make_engine()) as session:
+        with Session(_engine()) as session:
             hits = search(session, query, embedder=embedder, source=SOURCE, top_k=top_k)
     except Exception as exc:  # noqa: BLE001 -- the floor is silence, see the module docstring
         # Debug, not warning. On a laptop with no corpus ingested this is the
@@ -126,11 +179,5 @@ def render_passages(passages: list[RetrievedPassage]) -> str:
 
     body = "\n\n".join(f"[{p.rank}] {p.locator}\n{p.text}" for p in passages)
     return (
-        "REFERENCE MATERIAL — FAO Irrigation and Drainage Paper 56 (CC BY 4.0).\n"
-        "Use these passages ONLY to explain and attribute your reasoning in prose. "
-        "They are background, not inputs. Every numeric value you report must come "
-        "from the computed features supplied above; if a passage states a coefficient "
-        "or a threshold that differs from the configuration you were given, the "
-        "configuration is correct and the passage is context. Do not recompute anything.\n\n"
-        f"{body}"
+        f"{REFERENCE_PREAMBLE}\n\n{body}"
     )

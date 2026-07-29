@@ -1,7 +1,13 @@
-"""phase 8 (S3.7) -- multi-tenancy: budgets kept apart, caches namespaced, no semantic match.
+"""Multi-tenancy: the feature cache is namespaced per tenant, and matched exactly.
 
-The budget tests are pure; the cache tests need Postgres (feature_cache is JSONB
-with a composite key) and use the committing fixture.
+A cache hit across a tenant boundary is a data leak whether or not the numbers
+happen to coincide, so the key carries the tenant. It is also an exact
+fingerprint rather than a similarity match: a depletion of 67.4 mm and 67.6 mm
+sit a hair apart in any embedding space and on opposite sides of the irrigation
+trigger.
+
+These need Postgres -- `feature_cache` is JSONB with a composite key -- so they
+use the committing fixture.
 """
 
 from __future__ import annotations
@@ -15,27 +21,6 @@ from vinea.deps import Deps
 from vinea.jobs import tenancy
 
 RUN_DATE = date(2025, 2, 8)
-
-
-# --- per-tenant budget ------------------------------------------------------
-
-
-def test_budget_isolates_one_tenants_spend_from_another():
-    a = tenancy.TenantBudget(tenant="a", limit=5)
-    a = a.charge(5)
-    assert a.exhausted  # a is throttled...
-    b = tenancy.TenantBudget(tenant="b", limit=5)
-    assert not b.exhausted  # ...but b is untouched. That's the whole point.
-
-
-def test_budget_is_frozen_and_charge_returns_a_new_value():
-    a = tenancy.TenantBudget(tenant="a", limit=10)
-    a2 = a.charge(3)
-    assert a.spent == 0 and a2.spent == 3  # no mutation
-    assert a2.remaining == 7
-
-
-# --- namespaced, exact-match cache ------------------------------------------
 
 
 def test_cache_key_is_namespaced_by_tenant():

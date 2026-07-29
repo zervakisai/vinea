@@ -255,3 +255,37 @@ def test_measure_all_returns_one_result_per_objective(committing_db):
         READ_LATENCY.key,
         JUDGEMENT_RATE.key,
     }
+
+
+def test_a_tenant_with_two_blocks_is_counted_once(committing_db):
+    """One tenant, one advisory per day, one denominator entry.
+
+    A vineyard with two blocks has two open `grower_config` rows. Joining them
+    straight into the day series counted the tenant twice -- inflating both
+    halves of the fraction, and, when the rows disagreed about the timezone,
+    judging one advisory against two different mornings.
+
+    Advisories are keyed (tenant, run_date) with no location, so one deadline per
+    tenant is the only granularity the data supports.
+    """
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        _config(s, "nemea", "Europe/Athens")
+        s.execute(
+            text(
+                "INSERT INTO grower_config (tenant, location, region, timezone, crop, "
+                "irrigation_method, spray_sensitivity, kc, root_depth_m, taw_mm, mad_fraction, "
+                "initial_depletion_mm, effective_rain_fraction, rain_skip_mm, refill_fraction, "
+                "deltat_ideal_low, deltat_ideal_high, deltat_inversion_below, deltat_marginal_upper, "
+                "wind_ideal_low_ms, wind_ideal_high_ms, spray_index_cutoff, "
+                "spray_index_higher_is_better, rain_fast_hours, deps_hash) "
+                "VALUES ('nemea', 'block-b', 'eu', 'Europe/Athens', 'vines', 'drip', 'high', 0.7, "
+                "1.0, 120, 0.4, 0, 0.8, 2, 0.9, 2, 8, 2, 10, 0.83, 4.2, 0.5, false, 2, 'h')"
+            )
+        )
+        _advisory(s, "nemea", TODAY, datetime(2026, 7, 29, 2, 0, tzinfo=UTC))
+        s.commit()
+        result = availability_by_day(s, today=TODAY, window_days=0)
+
+    assert result.sample_size == 1, "two blocks must not double-count one tenant"
+    assert result.value == 1.0

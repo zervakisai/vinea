@@ -22,7 +22,6 @@ tenant-namespacing discipline around it.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import date
 
 from sqlmodel import Session, select
@@ -31,57 +30,17 @@ from vinea.db.mapping import deps_hash
 from vinea.db.models import FeatureCache
 from vinea.deps import Deps
 
-# A conservative default per-tenant ceiling on model calls per nightly run. One
-# tenant's runaway (a sensor feed spewing borderline days) can burn its own budget
-# to zero and be throttled, without touching anyone else's.
+# The per-tenant spend ceiling used to live here as `TenantBudget`: an in-memory
+# tally of model CALLS on a frozen dataclass. It was removed rather than fixed.
 #
-# SUPERSEDED IN PHASE 14, and left standing as the counter-example (ADR-007).
-# This budget counts CALLS, which do not bound spend, because calls are not
-# fungible: a 200-token call and a 200,000-token call decrement it identically.
-# Widen the retrieved context or lengthen a template through the phase-12 registry
-# and spend moves by an order of magnitude while this reports 40/100 used. It is
-# also in-memory, so it resets when a worker starts and two workers each get 100.
+# Calls are not fungible -- a 200-token call and a 200,000-token one decremented
+# it identically -- and the tally reset with every worker process, so two workers
+# draining the same queue each got a full allowance. It bounded nothing while
+# reporting a number people trusted.
 #
-# A control that reads 40/100 while spend triples is worse than no control,
-# because people trust it. The ceiling now lives on a LiteLLM virtual key -- one
-# system that sees every call, denominated in money, persistent across restarts
-# and shared between workers. A rule in code is a promise; in the database it is
-# a guarantee.
-DEFAULT_TENANT_CALL_BUDGET = 100
-
-
-@dataclass(frozen=True, slots=True)
-class TenantBudget:
-    """A per-tenant ceiling on model calls, with a running count.
-
-    Deliberately a plain in-memory tally rather than a distributed rate limiter:
-    within one nightly run the worker fleet is small and the point is isolation
-    between tenants, not precise global accounting. The lesson is the *shape* --
-    budget is per-tenant, so one tenant hitting its ceiling fails fast for that
-    tenant alone -- not the mechanism, which a production system would back with
-    Redis or a token bucket.
-
-    Maps onto pydantic-ai's own `UsageLimits`: when the worker runs the graph, it
-    can pass `UsageLimits(request_limit=budget.remaining)` so the SDK enforces the
-    ceiling at the call boundary too.
-    """
-
-    tenant: str
-    limit: int = DEFAULT_TENANT_CALL_BUDGET
-    spent: int = 0
-
-    @property
-    def remaining(self) -> int:
-        return max(0, self.limit - self.spent)
-
-    @property
-    def exhausted(self) -> bool:
-        return self.remaining <= 0
-
-    def charge(self, n: int = 1) -> TenantBudget:
-        """Return a new budget with `n` calls spent (frozen, so no mutation)."""
-        return TenantBudget(tenant=self.tenant, limit=self.limit, spent=self.spent + n)
-
+# The ceiling is now a `max_budget` on the tenant's gateway key: denominated in
+# money, persistent across restarts, shared by every worker, and enforced by the
+# one system that sees every call. `gateway/budget.py` handles the refusal.
 
 def cache_key(tenant: str, run_date: date, deps: Deps) -> tuple[str, date, str]:
     """The exact deterministic cache key: (tenant, run_date, deps_hash).

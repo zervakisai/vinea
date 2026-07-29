@@ -255,6 +255,7 @@ def advisory_to_row(
         cost_usd=cost.cost_usd if cost else None,
         cache_hit=cost.cache_hit if cost else None,
         context_chars=cost.context_chars if cost else None,
+        served_model=cost.served_model if cost else None,
     )
 
 
