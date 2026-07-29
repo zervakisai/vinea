@@ -30,6 +30,7 @@ from .ingest import DataQuality
 from .prompts import defaults
 from .prompts import registry as prompts
 from .rag.retrieve import render_passages, retrieve_for
+from .security import bound_text
 
 
 def _prompt_label() -> str:
@@ -115,8 +116,12 @@ def render_irrigation_context(d: IrrDeps) -> str:
         defaults.IRRIGATION,
         _prompt_label(),
         {
-            "crop": c.crop,
-            "irrigation_method": c.irrigation_method,
+            # phase 17: bounded before interpolation. Not a filter -- see
+            # security.py. The control that stops an injection changing a NUMBER
+            # is the output validator below; this stops one config field being
+            # 40 KB and becoming the prompt.
+            "crop": bound_text(c.crop),
+            "irrigation_method": bound_text(c.irrigation_method),
             "run_date": d.run_date.isoformat(),
             "target_date": d.target_date.isoformat(),
             "kc": c.kc,
@@ -137,8 +142,8 @@ def render_spray_context(d: SprayDeps) -> str:
         defaults.SPRAY,
         _prompt_label(),
         {
-            "crop": c.crop,
-            "spray_sensitivity": c.spray_sensitivity,
+            "crop": bound_text(c.crop),
+            "spray_sensitivity": bound_text(c.spray_sensitivity),
             "run_date": d.run_date.isoformat(),
             "target_date": d.target_date.isoformat(),
             "deltat_ideal_low": lo,
@@ -160,8 +165,12 @@ def render_coordinator_context(d: CoordDeps) -> str:
         defaults.COORDINATOR,
         _prompt_label(),
         {
-            "crop": c.crop,
-            "irrigation_method": c.irrigation_method,
+            # phase 17: bounded before interpolation. Not a filter -- see
+            # security.py. The control that stops an injection changing a NUMBER
+            # is the output validator below; this stops one config field being
+            # 40 KB and becoming the prompt.
+            "crop": bound_text(c.crop),
+            "irrigation_method": bound_text(c.irrigation_method),
             "run_date": d.run_date.isoformat(),
             "target_date": d.target_date.isoformat(),
             "dq_note": _dq_note(d.data_quality),

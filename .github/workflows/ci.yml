@@ -79,6 +79,55 @@ jobs:
   # here on purpose -- it is the chart's pre-upgrade hook, so the ordering lives
   # in the artifact rather than in this file, where a future edit could reorder it.
   # --------------------------------------------------------------------------
+  # phase 17. Two scanners, because they see different things: pip-audit reads
+  # uv.lock, an image scanner reads the OS layer that uv.lock knows nothing about.
+  #
+  # The gate is set at ZERO and can hold there, which is only true because phase
+  # 17 fixed what it found rather than documenting it: gitpython (5 advisories,
+  # via streamlit), pyasn1 (3, via google-auth), pytest (1, and the `<9` pin was
+  # what held it back). A gate people route around is worse than no gate, so the
+  # threshold is the one the repository actually meets.
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+
+      # The whole resolved set, dev included. A vulnerability in a test-only
+      # package does not ship, but it does run on a developer's machine and in
+      # this pipeline, which is a supply-chain surface of its own.
+      - name: pip-audit (all dependencies)
+        run: |
+          uv export --no-hashes --no-emit-project --format requirements-txt > /tmp/all.txt
+          uvx pip-audit -r /tmp/all.txt --progress-spinner off
+
+      # And separately, what actually ships. Reported even though the job above
+      # already covers it: when the two disagree, the difference is exactly the
+      # "is this reachable in production?" question, and having it as its own
+      # line of output means nobody has to reconstruct it under pressure.
+      - name: pip-audit (what the app image installs)
+        run: |
+          uv export --no-dev --no-emit-project --no-hashes \
+            --extra anthropic --extra gateway --extra rag \
+            --format requirements-txt > /tmp/app.txt
+          uvx pip-audit -r /tmp/app.txt --progress-spinner off
+
+      - name: Build the app image
+        run: docker build --target app -t vinea:scan .
+
+      # Trivy reads the Debian layer under the venv -- the part `uv.lock` cannot
+      # see. Failing on HIGH/CRITICAL only: a base image always carries a tail of
+      # LOW findings with no fix available, and a gate that is red for reasons
+      # nobody can act on is a gate that gets disabled.
+      - name: Scan the image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: vinea:scan
+          format: table
+          exit-code: "1"
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
   deploy:
     name: Deploy to an ephemeral cluster
     needs: test

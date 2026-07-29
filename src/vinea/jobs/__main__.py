@@ -14,7 +14,7 @@ from datetime import date
 
 from sqlmodel import Session
 
-from vinea.db.session import make_engine
+from vinea.db.session import make_engine, scope_to_ops
 from vinea.jobs import metrics, queue, scheduler, worker
 
 
@@ -41,6 +41,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "enqueue":
         with Session(engine) as session:
+            # Every command here is an operator action across tenants -- enqueue
+            # the night for all of them, read global queue depth, revive a failed
+            # task. Declared once per command rather than per query (phase 17).
+            scope_to_ops(session)
             newly = scheduler.enqueue_nightly(session, run_date=args.run_date, tenants=args.tenant)
         print(f"enqueued {len(newly)} new task(s) for {args.run_date}: {', '.join(newly) or '(none)'}")
         return 0
@@ -54,6 +58,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         with Session(engine) as session:
+            scope_to_ops(session)
             depth = metrics.current_depth(session)
         print(
             f"queued={depth['queued']} running={depth['running']} "
@@ -63,6 +68,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "requeue":
         with Session(engine) as session:
+            scope_to_ops(session)
             task = queue.requeue_failed(session, tenant=args.tenant, run_date=args.run_date)
         print("requeued" if task is not None else "no failed task to requeue")
         return 0

@@ -14,8 +14,8 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session
 
+from tests.conftest import open_ops_session
 from vinea.api import main
 from vinea.ui.client import ApiClient, langfuse_trace_url
 
@@ -137,7 +137,7 @@ def _seed(engine, *, tenant=TENANT, run_date=RUN_DATE, degraded=True, trace_id=N
         conflicts_resolved=[],
         overall_confidence=confidence,
     )
-    with Session(engine) as s:
+    with open_ops_session(engine) as s:
         repository.save_advisory(
             s,
             advisory,
@@ -180,7 +180,7 @@ def test_client_enqueue_then_history(api_client, committing_db):
 def test_client_queue_depth_and_history(api_client, committing_db):
     from vinea.jobs import metrics, queue
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         queue.enqueue(s, tenant=TENANT, run_date=RUN_DATE)
         metrics.sample_queue_depth(s)
         s.commit()
@@ -269,7 +269,7 @@ def app_test_env(committing_db, monkeypatch):
         cost=RunCost(input_tokens=3120, output_tokens=284, cost_usd=0.0114, cache_hit=False),
     )
     _seed(committing_db, tenant="olivares", degraded=True, confidence=0.4)
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         queue.enqueue(s, tenant=TENANT, run_date=date(2025, 2, 10))
         metrics.sample_queue_depth(s)
         s.commit()

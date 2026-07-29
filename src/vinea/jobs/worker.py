@@ -34,7 +34,7 @@ from sqlmodel import Session, select
 from vinea import config
 from vinea.db import repository
 from vinea.db.models import AdvisoryTask, GrowerConfig
-from vinea.db.session import make_engine
+from vinea.db.session import make_engine, scope_to_ops
 from vinea.deps import WINE_GRAPES, Deps
 from vinea.features import build_features
 from vinea.gateway import is_budget_refusal
@@ -220,6 +220,11 @@ def run_worker(
 
     while max_tasks is None or processed < max_tasks:
         with Session(engine) as session:
+            # The worker is legitimately cross-tenant: it claims from one queue
+            # spanning every tenant with SKIP LOCKED, which is the whole point of
+            # ADR-003's design. Under RLS that needs the escape declared once,
+            # here, rather than a policy exception per table.
+            scope_to_ops(session)
             task = queue.claim_one(session, worker_id=worker_id)
             if task is None:
                 break  # queue drained

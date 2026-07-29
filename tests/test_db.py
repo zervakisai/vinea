@@ -76,29 +76,29 @@ def _advisory(*, depletion: float = 150.0, plan: str = "irrigate at dawn") -> Da
 # --- phase 6: the advisory round trip --------------------------------------------
 
 
-def test_advisory_round_trips_through_the_database(db_session):
+def test_advisory_round_trips_through_the_database(ops_session):
     original = _advisory()
     repository.save_advisory(
-        db_session, original, tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, original, tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
 
-    restored = repository.get_advisory(db_session, tenant=TENANT, run_date=RUN_DATE)
+    restored = repository.get_advisory(ops_session, tenant=TENANT, run_date=RUN_DATE)
 
     # Not "close enough" -- the same contract, field for field, including the
     # nested legs and the flattened reconciliation.
     assert restored == original
 
 
-def test_missing_advisory_is_none_not_an_error(db_session):
-    assert repository.get_advisory(db_session, tenant=TENANT, run_date=date(1999, 1, 1)) is None
+def test_missing_advisory_is_none_not_an_error(ops_session):
+    assert repository.get_advisory(ops_session, tenant=TENANT, run_date=date(1999, 1, 1)) is None
 
 
 # --- phase 6: provenance is stored alongside, not inside, the contract -----------
 
 
-def test_provenance_is_stored_and_is_not_part_of_the_advisory_contract(db_session):
+def test_provenance_is_stored_and_is_not_part_of_the_advisory_contract(ops_session):
     repository.save_advisory(
-        db_session,
+        ops_session,
         _advisory(),
         tenant=TENANT,
         run_date=RUN_DATE,
@@ -111,7 +111,7 @@ def test_provenance_is_stored_and_is_not_part_of_the_advisory_contract(db_sessio
         trace_id="trace-xyz",
     )
 
-    row = repository.get_advisory_row(db_session, tenant=TENANT, run_date=RUN_DATE)
+    row = repository.get_advisory_row(ops_session, tenant=TENANT, run_date=RUN_DATE)
     assert row.model_id == "openai:gpt-4o-mini"
     assert row.prompt_version == "7"
     assert row.prompt_source == "registry"
@@ -123,12 +123,12 @@ def test_provenance_is_stored_and_is_not_part_of_the_advisory_contract(db_sessio
     assert "trace_id" not in DailyFarmAdvisory.model_fields
 
 
-def test_confidences_are_promoted_to_columns_for_aggregation(db_session):
+def test_confidences_are_promoted_to_columns_for_aggregation(ops_session):
     advisory = _advisory()
     repository.save_advisory(
-        db_session, advisory, tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, advisory, tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
-    row = repository.get_advisory_row(db_session, tenant=TENANT, run_date=RUN_DATE)
+    row = repository.get_advisory_row(ops_session, tenant=TENANT, run_date=RUN_DATE)
 
     # Denormalised on write so S6 can chart them without a JSONB path...
     assert row.irrigation_confidence == pytest.approx(advisory.irrigation.confidence)
@@ -141,48 +141,48 @@ def test_confidences_are_promoted_to_columns_for_aggregation(db_session):
 # --- phase 6 / S3.2: the idempotency key -----------------------------------------
 
 
-def test_saving_the_same_run_date_twice_upserts_instead_of_duplicating(db_session):
+def test_saving_the_same_run_date_twice_upserts_instead_of_duplicating(ops_session):
     repository.save_advisory(
-        db_session, _advisory(plan="first answer"), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, _advisory(plan="first answer"), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
     repository.save_advisory(
-        db_session, _advisory(plan="second answer"), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, _advisory(plan="second answer"), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
 
-    rows = db_session.exec(
+    rows = ops_session.exec(
         select(Advisory).where(Advisory.tenant == TENANT, Advisory.run_date == RUN_DATE)
     ).all()
     assert len(rows) == 1, "a re-run must not leave the grower with two advisories for one day"
 
     # Last writer wins: a re-run is normally a correction, so the newer answer is
     # the one worth keeping.
-    restored = repository.get_advisory(db_session, tenant=TENANT, run_date=RUN_DATE)
+    restored = repository.get_advisory(ops_session, tenant=TENANT, run_date=RUN_DATE)
     assert restored.summary == "second answer"
 
 
-def test_different_tenants_and_dates_are_separate_advisories(db_session):
+def test_different_tenants_and_dates_are_separate_advisories(ops_session):
     repository.save_advisory(
-        db_session, _advisory(), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, _advisory(), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
     repository.save_advisory(
-        db_session, _advisory(), tenant="other-farm", run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, _advisory(), tenant="other-farm", run_date=RUN_DATE, deps=WINE_GRAPES
     )
     repository.save_advisory(
-        db_session, _advisory(), tenant=TENANT, run_date=date(2025, 2, 7), deps=WINE_GRAPES
+        ops_session, _advisory(), tenant=TENANT, run_date=date(2025, 2, 7), deps=WINE_GRAPES
     )
 
-    assert len(repository.list_advisory_rows(db_session, tenant=TENANT)) == 2
-    assert len(repository.list_advisory_rows(db_session, tenant="other-farm")) == 1
+    assert len(repository.list_advisory_rows(ops_session, tenant=TENANT)) == 2
+    assert len(repository.list_advisory_rows(ops_session, tenant="other-farm")) == 1
 
 
-def test_history_can_be_windowed_by_date(db_session):
+def test_history_can_be_windowed_by_date(ops_session):
     for day in (5, 6, 7, 8):
         repository.save_advisory(
-            db_session, _advisory(), tenant=TENANT, run_date=date(2025, 2, day), deps=WINE_GRAPES
+            ops_session, _advisory(), tenant=TENANT, run_date=date(2025, 2, day), deps=WINE_GRAPES
         )
 
     rows = repository.list_advisory_rows(
-        db_session, tenant=TENANT, start=date(2025, 2, 6), end=date(2025, 2, 7)
+        ops_session, tenant=TENANT, start=date(2025, 2, 6), end=date(2025, 2, 7)
     )
     assert [r.run_date for r in rows] == [date(2025, 2, 7), date(2025, 2, 6)]
 
@@ -190,11 +190,11 @@ def test_history_can_be_windowed_by_date(db_session):
 # --- phase 6: the database is storage, not an authority on shape -----------------
 
 
-def test_a_corrupted_row_fails_validation_on_read_rather_than_reaching_a_grower(db_session):
+def test_a_corrupted_row_fails_validation_on_read_rather_than_reaching_a_grower(ops_session):
     repository.save_advisory(
-        db_session, _advisory(), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
+        ops_session, _advisory(), tenant=TENANT, run_date=RUN_DATE, deps=WINE_GRAPES
     )
-    row = repository.get_advisory_row(db_session, tenant=TENANT, run_date=RUN_DATE)
+    row = repository.get_advisory_row(ops_session, tenant=TENANT, run_date=RUN_DATE)
 
     # Someone hand-edits JSONB in psql, or an older schema wrote this.
     row.irrigation = {**row.irrigation, "unexpected_field": "nonsense"}
@@ -206,11 +206,11 @@ def test_a_corrupted_row_fails_validation_on_read_rather_than_reaching_a_grower(
 # --- phase 6 / ADR-001: derived values are not stored ----------------------------
 
 
-def test_raw_mm_is_recomputed_not_stored(db_session):
+def test_raw_mm_is_recomputed_not_stored(ops_session):
     repository.save_grower_config(
-        db_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
+        ops_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
     )
-    restored = repository.get_current_deps(db_session, tenant=TENANT, location=LOCATION)
+    restored = repository.get_current_deps(ops_session, tenant=TENANT, location=LOCATION)
 
     # The irrigation trigger survives the round trip...
     assert restored.raw_mm == pytest.approx(WINE_GRAPES.raw_mm)
@@ -223,72 +223,72 @@ def test_raw_mm_is_recomputed_not_stored(db_session):
 # --- phase 6: Deps as rows -------------------------------------------------------
 
 
-def test_deps_round_trip_is_the_identity(db_session):
+def test_deps_round_trip_is_the_identity(ops_session):
     olive = Deps(crop="olive", kc=0.85, taw_mm=120.0, mad_fraction=0.5)
     repository.save_grower_config(
-        db_session, olive, tenant=TENANT, location="grove-1", region="eu-south-1"
+        ops_session, olive, tenant=TENANT, location="grove-1", region="eu-south-1"
     )
 
-    restored = repository.get_current_deps(db_session, tenant=TENANT, location="grove-1")
+    restored = repository.get_current_deps(ops_session, tenant=TENANT, location="grove-1")
     # Frozen dataclass equality: every threshold, including the tuples that had to
     # be flattened into column pairs and rebuilt.
     assert restored == olive
 
 
-def test_adding_a_crop_is_an_insert_not_a_code_change(db_session):
+def test_adding_a_crop_is_an_insert_not_a_code_change(ops_session):
     """The claim deps.py makes, exercised: a second crop needs no new code."""
     repository.save_grower_config(
-        db_session, WINE_GRAPES, tenant=TENANT, location="block-7", region="eu-west-1"
+        ops_session, WINE_GRAPES, tenant=TENANT, location="block-7", region="eu-west-1"
     )
     repository.save_grower_config(
-        db_session,
+        ops_session,
         Deps(crop="olive", kc=0.85, taw_mm=120.0),
         tenant=TENANT,
         location="grove-1",
         region="eu-south-1",
     )
 
-    assert repository.get_current_deps(db_session, tenant=TENANT, location="block-7").crop == WINE_GRAPES.crop
-    assert repository.get_current_deps(db_session, tenant=TENANT, location="grove-1").crop == "olive"
+    assert repository.get_current_deps(ops_session, tenant=TENANT, location="block-7").crop == WINE_GRAPES.crop
+    assert repository.get_current_deps(ops_session, tenant=TENANT, location="grove-1").crop == "olive"
 
 
-def test_unconfigured_block_is_none_not_a_silent_default(db_session):
+def test_unconfigured_block_is_none_not_a_silent_default(ops_session):
     # Falling back to WINE_GRAPES here would advise a grower using another crop's
     # thresholds. Better to have no answer than a confident wrong one.
-    assert repository.get_current_deps(db_session, tenant=TENANT, location="nowhere") is None
+    assert repository.get_current_deps(ops_session, tenant=TENANT, location="nowhere") is None
 
 
 # --- phase 6: config is versioned, so old advisories stay explicable -------------
 
 
-def test_changing_config_opens_a_new_version_and_closes_the_old(db_session):
+def test_changing_config_opens_a_new_version_and_closes_the_old(ops_session):
     first = repository.save_grower_config(
-        db_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
+        ops_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
     )
     thirstier = Deps(taw_mm=180.0)
     second = repository.save_grower_config(
-        db_session, thirstier, tenant=TENANT, location=LOCATION, region="eu-west-1"
+        ops_session, thirstier, tenant=TENANT, location=LOCATION, region="eu-west-1"
     )
 
     assert first.id != second.id
     assert first.valid_to is not None, "the superseded version must be closed, not deleted"
     assert second.valid_to is None
-    assert repository.get_current_deps(db_session, tenant=TENANT, location=LOCATION) == thirstier
+    assert repository.get_current_deps(ops_session, tenant=TENANT, location=LOCATION) == thirstier
 
     # The old thresholds are still reachable by the hash an old advisory stored --
     # which is the entire point of keeping them.
     recovered = repository.get_deps_by_hash(
-        db_session, tenant=TENANT, deps_fingerprint=deps_hash(WINE_GRAPES)
+        ops_session, tenant=TENANT, deps_fingerprint=deps_hash(WINE_GRAPES)
     )
     assert recovered == WINE_GRAPES
 
 
-def test_resaving_identical_config_does_not_open_a_noisy_new_version(db_session):
+def test_resaving_identical_config_does_not_open_a_noisy_new_version(ops_session):
     first = repository.save_grower_config(
-        db_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
+        ops_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
     )
     again = repository.save_grower_config(
-        db_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
+        ops_session, WINE_GRAPES, tenant=TENANT, location=LOCATION, region="eu-west-1"
     )
     assert first.id == again.id
 
@@ -309,7 +309,7 @@ def test_deps_hash_is_stable_and_sensitive():
 # --- phase 6 / S2: WeatherRow is the seam, and it survives a round trip -----------
 
 
-def test_weather_row_round_trip_preserves_missing_readings_and_naive_timestamps(db_session):
+def test_weather_row_round_trip_preserves_missing_readings_and_naive_timestamps(ops_session):
     # An hour with no ET0 and no delta-T: exactly the row phase 1/phase 2 care about.
     original = WeatherRow(
         timestamp=datetime(2025, 2, 9, 14, 0),
@@ -323,9 +323,9 @@ def test_weather_row_round_trip_preserves_missing_readings_and_naive_timestamps(
     observation = weather_row_to_observation(
         original, tenant=TENANT, location=LOCATION, kind="forecast", source="csv"
     )
-    db_session.add(observation)
-    db_session.flush()
-    db_session.refresh(observation)
+    ops_session.add(observation)
+    ops_session.flush()
+    ops_session.refresh(observation)
 
     restored = observation_to_weather_row(observation)
 
@@ -341,12 +341,12 @@ def test_weather_row_round_trip_preserves_missing_readings_and_naive_timestamps(
     assert restored == original
 
 
-def test_forecast_and_history_for_the_same_hour_coexist(db_session):
+def test_forecast_and_history_for_the_same_hour_coexist(ops_session):
     """The natural key carries `kind`, so tonight's forecast can't overwrite what
     actually happened -- which is what keeps the golden dataset honest."""
     stamp = datetime(2025, 2, 9, 14, 0)
     for kind, temp in (("forecast", 24.0), ("history", 26.5)):
-        db_session.add(
+        ops_session.add(
             weather_row_to_observation(
                 WeatherRow(timestamp=stamp, temp_c=temp),
                 tenant=TENANT,
@@ -355,9 +355,9 @@ def test_forecast_and_history_for_the_same_hour_coexist(db_session):
                 source="csv",
             )
         )
-    db_session.flush()
+    ops_session.flush()
 
-    rows = db_session.exec(
+    rows = ops_session.exec(
         select(WeatherObservation).where(
             WeatherObservation.tenant == TENANT, WeatherObservation.location == LOCATION
         )
@@ -371,7 +371,7 @@ def test_forecast_and_history_for_the_same_hour_coexist(db_session):
 # --- phase 7 / S2.3: idempotent upsert of fetched observations -------------------
 
 
-def test_upsert_observations_is_idempotent_on_the_natural_key(db_session):
+def test_upsert_observations_is_idempotent_on_the_natural_key(ops_session):
     """Re-fetching an overlapping window must not duplicate rows.
 
     A 30-day history re-fetched daily overlaps 29 days with yesterday's pull.
@@ -385,14 +385,14 @@ def test_upsert_observations_is_idempotent_on_the_natural_key(db_session):
         for h in range(24)
     ]
     n1 = upsert_observations(
-        db_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
+        ops_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
     )
     n2 = upsert_observations(
-        db_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
+        ops_session, rows, tenant=TENANT, location=LOCATION, kind="history", source="open_meteo"
     )
     assert n1 == 24 and n2 == 24  # both writes "wrote" 24, but...
 
-    total = db_session.exec(
+    total = ops_session.exec(
         select(WeatherObservation).where(
             WeatherObservation.tenant == TENANT, WeatherObservation.kind == "history"
         )
@@ -400,13 +400,13 @@ def test_upsert_observations_is_idempotent_on_the_natural_key(db_session):
     assert len(total) == 24, "the second fetch must not have created a second copy"
 
 
-def test_upsert_refreshes_a_revised_reading_in_place(db_session):
+def test_upsert_refreshes_a_revised_reading_in_place(ops_session):
     """ERA5 revises values as more data arrives; the newer number should win."""
     from vinea.sources.persist import upsert_observations
 
     stamp = datetime(2025, 2, 9, 12, 0)
     upsert_observations(
-        db_session,
+        ops_session,
         [WeatherRow(timestamp=stamp, temp_c=20.0)],
         tenant=TENANT,
         location=LOCATION,
@@ -414,14 +414,14 @@ def test_upsert_refreshes_a_revised_reading_in_place(db_session):
         source="open_meteo",
     )
     upsert_observations(
-        db_session,
+        ops_session,
         [WeatherRow(timestamp=stamp, temp_c=21.5)],  # revised
         tenant=TENANT,
         location=LOCATION,
         kind="history",
         source="open_meteo",
     )
-    row = db_session.exec(
+    row = ops_session.exec(
         select(WeatherObservation).where(WeatherObservation.observed_at == stamp.replace(tzinfo=None))
     ).one()
     assert row.temp_c == pytest.approx(21.5)

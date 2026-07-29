@@ -37,7 +37,7 @@ from vinea.api.schemas import (
     QueueDepthResponse,
 )
 from vinea.db import repository
-from vinea.db.session import make_engine
+from vinea.db.session import make_engine, scope_to_ops, scope_to_tenant
 from vinea.jobs import metrics, queue
 
 # A single engine for the app's lifetime; sessions are per-request. Overridable in
@@ -53,8 +53,51 @@ def get_engine() -> Engine:
 
 
 def get_session(engine: Engine = Depends(get_engine)) -> Iterator[Session]:
-    """One session per request. The route owns the transaction (commits on write)."""
+    """One session per request. The route owns the transaction (commits on write).
+
+    Deliberately UNSCOPED, and after phase 17 that means it can see nothing:
+    every connection runs as `vinea_app`, and the row policies filter everything
+    when no tenant is declared. Only the probes use it -- they run `SELECT 1`,
+    which touches no tenant table.
+
+    Routes take `tenant_session` or `ops_session` instead, so "which rows may
+    this request see?" is answered by which dependency it declares rather than
+    by whether its query remembered a WHERE clause.
+    """
     with Session(engine) as session:
+        yield session
+
+
+def tenant_session(
+    tenant: str = Depends(auth.scoped_tenant),
+    engine: Engine = Depends(get_engine),
+) -> Iterator[Session]:
+    """A session that can see exactly one tenant's rows, and no others.
+
+    Composes authentication (the API key), authorization (the key owns this
+    tenant) and *enforcement* (the database will not return anything else) into
+    one dependency. Phase 10 built the first two; this adds the third, and the
+    third is the one that survives a future query written by someone who has
+    never read `auth.py`.
+    """
+    with Session(engine) as session:
+        scope_to_tenant(session, tenant)
+        yield session
+
+
+def ops_session(
+    engine: Engine = Depends(get_engine),
+    _: None = Depends(auth.require_ops_key),
+) -> Iterator[Session]:
+    """A session that may see every tenant. Gated on the ops key, never a tenant key.
+
+    The ops key check is a *dependency of the session itself* rather than of the
+    route, so a cross-tenant view cannot be opened without it. Declaring the two
+    separately on a route would let someone add a route with the session and
+    forget the key.
+    """
+    with Session(engine) as session:
+        scope_to_ops(session)
         yield session
 
 
@@ -120,7 +163,7 @@ def ready(response: Response, session: Session = Depends(get_session)) -> Health
 def enqueue_advisory(
     run_date: date,
     tenant: str = Depends(auth.scoped_tenant),
-    session: Session = Depends(get_session),
+    session: Session = Depends(tenant_session),
 ) -> EnqueueResponse:
     """Enqueue the advisory for (tenant, run_date). Returns 202, NOT the advisory.
 
@@ -149,7 +192,7 @@ def enqueue_advisory(
 def get_advisory(
     run_date: date,
     tenant: str = Depends(auth.scoped_tenant),
-    session: Session = Depends(get_session),
+    session: Session = Depends(tenant_session),
 ) -> AdvisoryEnvelope:
     """One advisory + its provenance, or 404 if it hasn't been produced yet.
 
@@ -171,7 +214,7 @@ def get_advisory(
 @app.get("/advisories/{tenant}", response_model=list[AdvisorySummary])
 def list_advisories(
     tenant: str = Depends(auth.scoped_tenant),
-    session: Session = Depends(get_session),
+    session: Session = Depends(tenant_session),
     from_: date | None = Query(default=None, alias="from"),
     to: date | None = Query(default=None),
 ) -> list[AdvisorySummary]:
@@ -180,8 +223,8 @@ def list_advisories(
     return [AdvisorySummary.from_row(r) for r in rows]
 
 
-@app.get("/ops/queue", response_model=QueueDepthResponse, dependencies=[Depends(auth.require_ops_key)])
-def ops_queue(session: Session = Depends(get_session)) -> QueueDepthResponse:
+@app.get("/ops/queue", response_model=QueueDepthResponse)
+def ops_queue(session: Session = Depends(ops_session)) -> QueueDepthResponse:
     """Queue depth across all tenants. Ops-key gated -- it spans tenants."""
     depth = metrics.current_depth(session)
     return QueueDepthResponse(**depth)
@@ -190,10 +233,9 @@ def ops_queue(session: Session = Depends(get_session)) -> QueueDepthResponse:
 @app.get(
     "/ops/queue/history",
     response_model=list[QueueDepthPoint],
-    dependencies=[Depends(auth.require_ops_key)],
 )
 def ops_queue_history(
-    session: Session = Depends(get_session),
+    session: Session = Depends(ops_session),
     limit: int = Query(default=500, le=5000),
 ) -> list[QueueDepthPoint]:
     """The queue-depth time series S6.3 charts. Newest first, ops-key gated.
@@ -209,10 +251,9 @@ def ops_queue_history(
 @app.get(
     "/ops/advisories",
     response_model=list[AdvisorySummary],
-    dependencies=[Depends(auth.require_ops_key)],
 )
 def ops_advisories(
-    session: Session = Depends(get_session),
+    session: Session = Depends(ops_session),
     from_: date | None = Query(default=None, alias="from"),
     to: date | None = Query(default=None),
     limit: int = Query(default=500, le=5000),

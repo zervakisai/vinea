@@ -21,6 +21,7 @@ the project exactly as it stood there, and `uv run pytest` is green at every tag
 | 14 | LLM gateway & cost | `phase-14` | [14](14-gateway-and-cost.md) |
 | 15 | Retrieval & citations | `phase-15` | [15](15-rag-and-citations.md) |
 | 16 | Context engineering | `phase-16` | [16](16-context-engineering.md) |
+| 17 | Security hardening | `phase-17` | [17](17-security-hardening.md) |
 
 ## How to read this
 
@@ -35,7 +36,7 @@ The single claim the whole sequence is arranged to demonstrate is that the
 **physics and the topology** from phases 1–4 never have to change again:
 
 ```bash
-git diff --ignore-blank-lines phase-04 phase-16 -- \
+git diff --ignore-blank-lines phase-04 phase-17 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 ```

@@ -42,23 +42,24 @@ git checkout main
 | 14 | LLM gateway & cost | [14](docs/phases/14-gateway-and-cost.md) | A budget in the wrong unit is worse than none |
 | 15 | Retrieval & citations | [15](docs/phases/15-rag-and-citations.md) | Retrieval feeds the explanation, never the computation |
 | 16 | Context engineering | [16](docs/phases/16-context-engineering.md) | Check what the instrument measures before quoting it |
+| 17 | Security hardening | [17](docs/phases/17-security-hardening.md) | A control that reports success while doing nothing |
 
 The production layers do not reach into the core built in phases 1–4. That is a
 checkable claim, not a slogan — and worth checking *precisely*, because which files
 are exempt is the interesting part:
 
 ```bash
-# Unchanged from phase 4 all the way to phase 16 — the physics, the contracts,
+# Unchanged from phase 4 all the way to phase 17 — the physics, the contracts,
 # the crop config, the topology, the conflict facts, the orchestration entry:
-git diff --ignore-blank-lines phase-04 phase-16 -- \
+git diff --ignore-blank-lines phase-04 phase-17 -- \
   src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
   src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
 
 # Additive only — not one line removed:
-git diff phase-04 phase-16 -- src/vinea/ingest.py src/vinea/config.py
+git diff phase-04 phase-17 -- src/vinea/ingest.py src/vinea/config.py
 
 # Genuinely changed, and you should expect these to be:
-git diff phase-04 phase-16 -- src/vinea/agents.py src/vinea/cli.py
+git diff phase-04 phase-17 -- src/vinea/agents.py src/vinea/cli.py
 ```
 
 `agents.py` changes in phase 12, when the instruction f-strings become registry
@@ -264,6 +265,7 @@ Five ADRs record the calls that were genuinely arguable:
 | [006](docs/adr/006-kubernetes-on-demand.md) | Kubernetes, provider-agnostic and on demand |
 | [007](docs/adr/007-self-hosted-gateway-exact-cache.md) | A self-hosted LLM gateway, exact-match cache |
 | [008](docs/adr/008-pgvector-not-a-vector-database.md) | pgvector, not a vector database; hybrid retrieval |
+| [009](docs/adr/009-row-level-security.md) | Tenant isolation in the database, not in the queries |
 
 ## Layout
 
@@ -281,6 +283,7 @@ src/vinea/  config · ingest · deps · contracts · features        the determi
             gateway/    routing, ledger, budget refusals            phase 14
             rag/        corpus, embedding, hybrid store, citations   phase 15
             context/    token accounting, the per-leg budget          phase 16
+            security.py bounded free text (NOT an injection filter)  phase 17
 data/       the two CSVs + ATTRIBUTION.md
             corpus/  798 passages of FAO-56, CC BY 4.0          phase 15
 scripts/    fetch_dataset.py — regenerates data/ from Open-Meteo
@@ -291,7 +294,8 @@ Dockerfile  two targets: `app` (API + worker) and `ui`               phase 13
 infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh          phase 13
             chart/files/litellm-config.yaml — one file, two deploys  phase 14
             sealed-secrets/ · testing/ the throwaway Postgres
-docs/       adr/ · phases/ — the eight decisions and the sixteen lessons
+docs/       adr/ · phases/ — the nine decisions and the seventeen lessons
+SECURITY.md the model, its limits, and what it deliberately omits phase 17
 migrations/ Alembic versions (the schema we actually ship)
 tests/      offline via TestModel/FunctionModel · fixtures/
 ```

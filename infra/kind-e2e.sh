@@ -161,6 +161,41 @@ echo "$schema" | grep -qE "corpus_chunks_cols=(9|10|11)" \
   || { echo "corpus_chunks not created as expected: ${schema:-<no output>}" >&2; exit 1; }
 echo "schema: $schema"
 
+step "assert: row-level security is real in the cluster (phase 17)"
+# Behaviour, not configuration. `relrowsecurity = true` is what the FIRST version
+# of the RLS migration reported while being completely inert -- the connecting
+# role was a superuser, and superusers bypass row security unconditionally. So
+# this checks the role AND counts rows from a query with no tenant filter.
+rls=$(kubectl run rls-check --rm -i --restart=Never --image=vinea:e2e \
+  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+  --command -- python -c "
+from sqlalchemy import text
+from sqlmodel import Session, select
+from vinea.db.models import Advisory
+from vinea.db.session import make_engine, scope_to_ops, scope_to_tenant
+e = make_engine()
+with Session(e) as s:
+    user, sup, byp = s.execute(text('SELECT current_user, rolsuper, rolbypassrls FROM pg_roles WHERE rolname = current_user')).one()
+with Session(e) as s:
+    scope_to_ops(s)
+    for t in ('rls-a', 'rls-b'):
+        s.execute(text(\"INSERT INTO advisories (tenant, run_date, target_date, irrigation, spray, reconciliation, deps_hash) VALUES (:t, '2026-01-01', '2026-01-01', '{}', '{}', '{}', 'h') ON CONFLICT DO NOTHING\"), {'t': t})
+    s.commit()
+with Session(e) as s:
+    scope_to_tenant(s, 'rls-a')
+    scoped = {r.tenant for r in s.exec(select(Advisory)).all()}
+with Session(e) as s:
+    unscoped = s.exec(select(Advisory)).all()
+print(f'user={user} super={sup} bypass={byp} scoped={sorted(scoped)} unscoped={len(unscoped)}')
+" 2>/dev/null || true)
+echo "$rls" | grep -q "user=vinea_app super=False bypass=False" \
+  || { echo "app role is not restricted: ${rls:-<no output>}" >&2; exit 1; }
+echo "$rls" | grep -q "scoped=\['rls-a'\]" \
+  || { echo "a query with no WHERE crossed a tenant boundary: ${rls:-<no output>}" >&2; exit 1; }
+echo "$rls" | grep -q "unscoped=0" \
+  || { echo "an unscoped session was not fail-closed: ${rls:-<no output>}" >&2; exit 1; }
+echo "rls: $rls"
+
 step "smoke test THROUGH the API, with a real key"
 # Not `curl /health`. A smoke test that proves a container started is theatre --
 # it would pass with an empty database and a broken schema. This one authenticates,

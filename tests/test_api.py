@@ -15,8 +15,9 @@ from datetime import date
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, select
+from sqlmodel import select
 
+from tests.conftest import open_ops_session
 from vinea.api import main
 from vinea.db.models import Advisory, AdvisoryTask
 from vinea.deps import Deps
@@ -88,7 +89,7 @@ def test_post_enqueues_a_task_and_creates_no_advisory(client, committing_db):
     under ALLOW_MODEL_REQUESTS=False, so any model call would have raised."""
     client.post(f"/advisories/{TENANT}/{RUN_DATE}", headers=_auth())
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         task = s.exec(select(AdvisoryTask).where(AdvisoryTask.tenant == TENANT)).one()
         assert task.status == "queued"
         advisories = s.exec(select(Advisory).where(Advisory.tenant == TENANT)).all()
@@ -132,7 +133,7 @@ def _seed_advisory(engine, *, tenant=TENANT, run_date=RUN_DATE, degraded=True, t
         conflicts_resolved=[],
         overall_confidence=0.6,
     )
-    with Session(engine) as s:
+    with open_ops_session(engine) as s:
         repository.save_advisory(
             s,
             advisory,
@@ -194,7 +195,7 @@ def test_ops_queue_requires_the_ops_key(client):
 def test_ops_queue_reports_depth(client, committing_db):
     from vinea.jobs import queue as q
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         q.enqueue(s, tenant=TENANT, run_date=RUN_DATE)
         q.enqueue(s, tenant="olivares", run_date=RUN_DATE)
         s.commit()

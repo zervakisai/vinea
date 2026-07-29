@@ -8,6 +8,7 @@ the database fixtures (phase 6).
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from pathlib import Path
 
 import pydantic_ai.models
@@ -45,7 +46,8 @@ def db_engine():
     from alembic import command
     from alembic.config import Config
     from sqlalchemy.exc import OperationalError
-    from sqlmodel import create_engine
+
+    from vinea.db.session import make_engine
 
     url = _test_database_url()
     if not url:
@@ -54,7 +56,12 @@ def db_engine():
             "Start Postgres with `docker compose up -d postgres` and copy .env.example to .env."
         )
 
-    engine = create_engine(url)
+    # `make_engine`, not `create_engine`: phase 17 attaches a connect-time
+    # `SET ROLE vinea_app` there, and a test engine built without it runs as the
+    # bootstrap superuser, which bypasses row-level security entirely. The suite
+    # would then be green about a control it never exercises -- the same shape of
+    # false evidence phase 13's e2e and phase 16's eval gate both produced.
+    engine = make_engine(url)
     try:
         with engine.connect():
             pass
@@ -67,6 +74,32 @@ def db_engine():
 
     yield engine
     engine.dispose()
+
+
+@pytest.fixture
+def ops_session(db_engine):
+    """A rolled-back session allowed to see every tenant.
+
+    Most tests are about behaviour that spans tenants (the queue, the scheduler,
+    the ops endpoints) or seed rows for several. Under RLS that needs the
+    cross-tenant escape, so it is a named fixture rather than something each test
+    remembers to call -- and a test that wants isolation asks for `db_session`,
+    which is scoped to nothing and therefore sees nothing until it says so.
+    """
+    from sqlmodel import Session
+
+    from vinea.db.session import scope_to_ops
+
+    connection = db_engine.connect()
+    transaction = connection.begin()
+    session = Session(bind=connection)
+    scope_to_ops(session)
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
 
 
 @pytest.fixture
@@ -107,11 +140,47 @@ def committing_db(db_engine):
     from sqlalchemy import text
     from sqlmodel import Session
 
+    from vinea.db.session import APP_ROLE
+
     def _truncate():
         with Session(db_engine) as s:
+            # RESET ROLE first: phase 17 puts every connection into `vinea_app`,
+            # which deliberately has no TRUNCATE privilege. Cleaning the whole
+            # database across every tenant is an administrative act, so it is
+            # done as the owner -- explicitly, in one place, rather than by
+            # granting the application a privilege it must never use.
+            s.execute(text("RESET ROLE"))
             s.execute(text(f"TRUNCATE {_ALL_TABLES} RESTART IDENTITY CASCADE"))
+            # ...and back, BEFORE the commit. `SET ROLE` is transactional, so a
+            # committed `RESET ROLE` sticks to this pooled connection for the
+            # rest of its life and every test that borrows it afterwards runs as
+            # the owner -- unrestricted, and green about a control it is no
+            # longer exercising. That happened; this line is the fix.
+            s.execute(text(f"SET ROLE {APP_ROLE}"))
             s.commit()
 
     _truncate()
     yield db_engine
     _truncate()
+
+
+@contextmanager
+def open_ops_session(engine):
+    """A committing session allowed to see every tenant.
+
+    The test-side counterpart of `jobs/worker.py`'s `scope_to_ops`. Tests that
+    exercise the queue, the scheduler or cross-tenant storage behaviour are
+    legitimately cross-tenant, exactly as the worker is -- so they declare it the
+    same way rather than being handed an unrestricted connection.
+
+    Using bare `Session(engine)` in a test now yields a session scoped to nothing,
+    which after phase 17 sees nothing. That is the fixture doing its job: forgetting
+    to declare scope fails loudly instead of quietly reading everything.
+    """
+    from sqlmodel import Session
+
+    from vinea.db.session import scope_to_ops
+
+    with Session(engine) as session:
+        scope_to_ops(session)
+        yield session

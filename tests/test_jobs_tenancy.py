@@ -10,6 +10,7 @@ from datetime import date
 
 import pytest
 
+from tests.conftest import open_ops_session
 from vinea.deps import Deps
 from vinea.jobs import tenancy
 
@@ -57,16 +58,15 @@ def test_cache_key_changes_with_config_never_similarity():
 
 @pytest.mark.db
 def test_cache_round_trip_and_tenant_isolation(committing_db):
-    from sqlmodel import Session
 
     deps = Deps()
     feats = {"depletion": 120.0, "windows": 3}
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         tenancy.put_cached_features(s, tenant="a", run_date=RUN_DATE, deps=deps, features=feats)
         s.commit()
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         assert tenancy.get_cached_features(s, tenant="a", run_date=RUN_DATE, deps=deps) == feats
         # b misses, despite identical day and config. No cross-tenant serve.
         assert tenancy.get_cached_features(s, tenant="b", run_date=RUN_DATE, deps=deps) is None
@@ -74,15 +74,14 @@ def test_cache_round_trip_and_tenant_isolation(committing_db):
 
 @pytest.mark.db
 def test_changing_config_is_a_miss_not_a_stale_hit(committing_db):
-    from sqlmodel import Session
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         tenancy.put_cached_features(
             s, tenant="a", run_date=RUN_DATE, deps=Deps(), features={"v": 1}
         )
         s.commit()
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         # New config -> new deps_hash -> new key -> miss. A stale hit is impossible
         # because the key includes everything the features depend on.
         got = tenancy.get_cached_features(

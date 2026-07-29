@@ -31,7 +31,17 @@ _KEYS = ("OPENAI_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY"
 
 
 def _session(engine) -> Session:
-    return Session(engine)
+    """A committing session scoped to ops (phase 17).
+
+    The worker and the queue are cross-tenant by design -- one queue, SKIP
+    LOCKED, every tenant -- so the tests declare the same scope the worker
+    declares. A bare `Session(engine)` would now see nothing.
+    """
+    from vinea.db.session import scope_to_ops
+
+    session = Session(engine)
+    scope_to_ops(session)
+    return session
 
 
 def _features():

@@ -14,6 +14,7 @@ from pydantic_ai.messages import ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_evals import Case
 
+from tests.conftest import open_ops_session
 from vinea.contracts import DailyFarmAdvisory, IrrigationAdvice, SprayAdvice, SprayWindow
 from vinea.deps import WINE_GRAPES, Deps
 from vinea.evals import asymmetric, golden, judge
@@ -122,7 +123,7 @@ def test_drift_tags_capture_the_five_things_that_move_a_score():
 
 
 def test_eval_run_is_written_with_all_five_tags(committing_db):
-    from sqlmodel import Session, select
+    from sqlmodel import select
 
     from vinea.db.models import EvalRun
 
@@ -130,11 +131,11 @@ def test_eval_run_is_written_with_all_five_tags(committing_db):
     score = asymmetric.score_decisions(
         [asymmetric.IrrigationDecision(oracle_should_irrigate=True, model_recommends_irrigate=True)]
     )
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         write_eval_run(s, asymmetric_result(score), tags)
         s.commit()
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         row = s.exec(select(EvalRun).where(EvalRun.evaluator == "asymmetric_cost")).one()
         assert row.prompt_version == "7"
         assert row.deps_hash and row.code_sha and row.dataset_version
@@ -178,11 +179,11 @@ def test_dataset_flags_a_wrong_depletion_and_a_missed_irrigation():
 
 
 def test_golden_replay_writes_a_passing_run_per_evaluator(committing_db):
-    from sqlmodel import Session, select
+    from sqlmodel import select
 
     from vinea.db.models import EvalRun
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         outcome = run_golden_eval(
             s,
             task=lambda _i: _advisory_with(depletion=133.5, recommend=True),
@@ -194,7 +195,7 @@ def test_golden_replay_writes_a_passing_run_per_evaluator(committing_db):
         assert {r.evaluator for r in outcome.results} == {"water_balance", "spray_rule", "asymmetric_cost"}
         assert all(r.passed for r in outcome.results)
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         rows = s.exec(select(EvalRun)).all()
         assert len(rows) == 3
         assert all(r.prompt_version == "7" and r.deps_hash and r.code_sha for r in rows)
@@ -203,9 +204,8 @@ def test_golden_replay_writes_a_passing_run_per_evaluator(committing_db):
 
 
 def test_golden_replay_fails_the_gate_on_a_missed_irrigation(committing_db):
-    from sqlmodel import Session
 
-    with Session(committing_db) as s:
+    with open_ops_session(committing_db) as s:
         outcome = run_golden_eval(
             s,
             task=lambda _i: _advisory_with(depletion=100.0, recommend=False),

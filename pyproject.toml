@@ -97,7 +97,10 @@ vinea = "vinea.cli:main"
 
 [dependency-groups]
 dev = [
-    "pytest>=8,<9",
+    # phase 17: >=9.0.3 closes PYSEC-2026-1845. The <9 pin was there to keep the
+    # suite on a known-good major while the project was being written; it has
+    # outlived that and was pinning us to a known-vulnerable release.
+    "pytest>=9.0.3,<10",
     "ruff>=0.8",
     # Self-reference to the ui extra so a bare `uv sync` still installs Streamlit:
     # dev groups ARE installed by default, extras are not.
