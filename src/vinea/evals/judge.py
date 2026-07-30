@@ -1,13 +1,13 @@
-"""S7.6 -- LLM-as-judge, confined to the one subjective artifact + trajectory.
+"""LLM-as-judge, confined to the one subjective artifact and the trajectory.
 
-DESIGN.md B2: LLM-as-judge still has a job here, just a narrower one than "grade the
+LLM-as-judge still has a job here, just a narrower one than "grade the
 output". The grower-facing *summary* (the reconciliation's sequenced plan) is the
 one genuinely subjective artifact in the pipeline -- there's no correct-numerical
 answer to check it against -- and that's exactly what a judge model is for. It must
 NEVER be pointed at a number that already has a correct answer (that's the oracle's
 job); a judge on the depletion figure would be replacing physics with an opinion.
 
-Two guardrails on the judge, both from B2:
+Two guardrails on the judge:
 
   1. The rubric names what it's checking (clear? grounded in the facts? no invented
      interaction?), because a judge is a model with its own biases (position,
@@ -57,7 +57,7 @@ JUDGE_RUBRIC = (
 # The judge agent, constructed WITHOUT a bound model -- the model is passed at run()
 # time, exactly like the core's agents. This keeps construction free of credentials and
 # lets a test `.override()` it with a FunctionModel. The model used at run should be a
-# DIFFERENT, typically stronger model than the one that produced the summary (B2).
+# DIFFERENT, typically stronger model than the one that produced the summary.
 judge_agent = Agent(output_type=SummaryVerdict, instructions=JUDGE_RUBRIC)
 
 

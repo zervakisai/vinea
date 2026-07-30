@@ -12,15 +12,15 @@ Three ways a task's advisory gets produced, and the worker chooses among them
 without the graph or the agents knowing:
 
   1. No API key -> `build_degraded_advisory`, `degraded=True`. The grower gets the
-     deterministic answer (S3.5).
+     deterministic answer.
   2. Router says the day is clear-cut -> `build_degraded_advisory`,
-     `degraded=False` but it just didn't need a model (S3.6). Not "degraded" --
+     `degraded=False` but it just didn't need a model. Not "degraded" --
      the answer is complete.
-  3. Otherwise -> the full graph, `run_advisory_sync` (S3.2's actual work).
+  3. Otherwise -> the full graph, `run_advisory_sync`.
 
-phase 9 will swap the plain graph call for an instrumented one (trace_id +
-pre-correction capture); until then this worker records neither, and that's honest
--- the columns are nullable for exactly this reason.
+The instrumented runner is what records the trace id, the pre-correction attempt
+and the cost; the plain graph call records none of them. Every one of those columns
+is nullable for that reason -- a column that arrives empty is honest.
 """
 
 from __future__ import annotations
@@ -83,11 +83,11 @@ def _resolve_deps(session: Session, *, tenant: str) -> Deps:
 def _load_weather(run_date: date) -> WeatherLoadResult:
     """Load this tenant's weather for the run.
 
-    phase 8 uses the bundled CSV fixtures as the batch's weather source, so the queue is
+    The batch reads the bundled CSV fixtures as its weather source, so the queue is
     exercisable end to end offline. A production worker would read
     `weather_observations` for the tenant (populated by S2's `--source api`); that
     swap is a one-function change behind the same WeatherLoadResult, exactly the
-    seam phase 7 built. Kept as CSV here so phase 8's tests never need a live feed.
+    `WeatherSource` seam. Kept as CSV here so the tests never need a live feed.
     """
     data_dir = config.DEFAULT_DATA_DIR
     history = sorted(Path(data_dir).glob("*last-30d*.csv"))[-1]
@@ -137,8 +137,8 @@ def process_one(
                 route, degraded, model_id = "skip_model", False, None
             else:
                 # The instrumented runner produces the same advisory as the plain
-                # graph, plus the trace id (S4.3) and the pre-correction attempt
-                # (S4.4). It's a no-op wrapper when tracing is off, so the worker
+                # graph, plus the trace id and the pre-correction attempt.
+                # It's a no-op wrapper when tracing is off, so the worker
                 # always uses it -- pre-correction capture doesn't need OTel, and
                 # trace_id is simply None without it.
                 try:
@@ -146,7 +146,7 @@ def process_one(
                         load_result, deps, model=model, tenant=task.tenant, run_date=task.run_date
                     )
                 except Exception as exc:  # noqa: BLE001 -- re-raised unless it is a budget refusal
-                    # phase 14. The gateway being *unreachable* never reaches here:
+                    # The gateway being *unreachable* never reaches here:
                     # FallbackModel already tried the direct provider, and if there
                     # was none, the exception below is an outage and falls through
                     # to the retry machinery, which is correct -- an outage at 02:00

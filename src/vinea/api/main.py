@@ -2,8 +2,8 @@
 
 Every route here does one of two things: write a queue row (`POST`), or read the
 database (`GET`). None of them import an agent, build features, or run the graph --
-that work belongs to the worker (phase 8), reached through the queue. The proof is
-S5.4's test: a `POST` succeeds with `ALLOW_MODEL_REQUESTS=False`, which would raise
+that work belongs to the worker, reached through the queue. The proof is
+a test: a `POST` succeeds with `ALLOW_MODEL_REQUESTS=False`, which would raise
 if any model were touched, and returns a 202 with a task id before an advisory
 exists.
 
@@ -60,7 +60,7 @@ def get_engine() -> Engine:
 def get_session(engine: Engine = Depends(get_engine)) -> Iterator[Session]:
     """One session per request. The route owns the transaction (commits on write).
 
-    Deliberately UNSCOPED, and after phase 17 that means it can see nothing:
+    Deliberately UNSCOPED, and under row-level security that means it sees nothing:
     every connection runs as `vinea_app`, and the row policies filter everything
     when no tenant is declared. Only the probes use it -- they run `SELECT 1`,
     which touches no tenant table.
@@ -81,7 +81,7 @@ def tenant_session(
 
     Composes authentication (the API key), authorization (the key owns this
     tenant) and *enforcement* (the database will not return anything else) into
-    one dependency. Phase 10 built the first two; this adds the third, and the
+    one dependency. The third is the one that matters most, and the
     third is the one that survives a future query written by someone who has
     never read `auth.py`.
     """
@@ -200,7 +200,7 @@ def ready(response: Response, session: Session = Depends(get_session)) -> Health
 
     It has to be a status code rather than a field, because an httpGet probe reads
     the status and nothing else. That is also why /health alone was not enough:
-    `curl -f /health` passes with no database at all (phase 13).
+    `curl -f /health` passes with no database at all.
     """
     database = _database_state(session)
     if database != "ok":
@@ -227,7 +227,7 @@ def enqueue_advisory(
     accepted for processing that hasn't happened yet.
 
     Idempotent on (tenant, run_date): a second POST for the same night returns the
-    existing task rather than creating a duplicate (S3.2's enqueue), so a client
+    existing task rather than creating a duplicate, so a client
     retrying a POST can't fan out a night into many advisories.
     """
     existing = _existing_task(session, tenant=tenant, run_date=run_date)
@@ -292,9 +292,9 @@ def ops_queue_history(
     session: Session = Depends(ops_session),
     limit: int = Query(default=500, le=5000),
 ) -> list[QueueDepthPoint]:
-    """The queue-depth time series S6.3 charts. Newest first, ops-key gated.
+    """The queue-depth time series the operator panel charts. Newest first, ops-key gated.
 
-    Reads `queue_depth_samples` (S3.4) -- the whole reason those snapshots are
+    Reads `queue_depth_samples` -- the whole reason those snapshots are
     stored rather than recomputed: `current_depth` gives you now, this gives you
     the history an autoscaler tunes against.
     """
@@ -314,7 +314,7 @@ def ops_advisories(
 ) -> list[AdvisorySummary]:
     """Advisory summaries across ALL tenants -- the operator quality monitor's feed.
 
-    Ops-key gated because it's cross-tenant (S6.4 computes degraded rate and
+    Ops-key gated because it's cross-tenant (the quality monitor computes degraded rate and
     confidence distribution over everyone). The UI does the aggregation client-side
     from these summaries; the API just serves the rows.
     """

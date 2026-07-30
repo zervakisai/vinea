@@ -15,7 +15,7 @@ security control that oversells itself stops people looking for the real one:
   it. Truncation is a blunt, reliable control against a blunt attack.
 
   **It removes the template delimiters.** `{{` and `}}` are the prompt registry's
-  substitution syntax (phase 12). Config text containing them could interfere
+  substitution syntax. Config text containing them could interfere
   with rendering; stripping them costs nothing and removes a class of surprise.
 
   **It strips control characters.** Not a security property so much as a
@@ -40,7 +40,7 @@ import re
 # Generous, and generous on purpose. Real config values are a few words -- the
 # default `spray_sensitivity` is 48 characters. 200 leaves room for a genuinely
 # descriptive value while making it impossible for one field to dominate a prompt
-# whose entire own instruction block is 762 characters (measured in phase 16).
+# whose entire own instruction block is a measured 762 characters.
 MAX_CONFIG_CHARS = 200
 
 _CONTROL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")

@@ -4,7 +4,7 @@ These are the exact framings that `agents.py`'s `render_*_context` functions use
 to build as f-strings, turned into `{{variable}}` templates. They ship *in the
 deploy artifact*, so when the registry is unreachable and the cache is cold, the
 system still has a coherent prompt to run -- yesterday's phrasing, never a crash
-(DESIGN.md B3's fail-open floor).
+-- the fail-open floor.
 
 Two invariants hold these together:
 
@@ -13,7 +13,7 @@ Two invariants hold these together:
      (registry.py) from the agent's deps. Nothing here reaches the registry that
      could leak a grower's numbers, and an outage can only cost wording.
 
-  2. **They match production.** The CI drift check (S7.3) diffs these against
+  2. **They match production.** The CI drift check diffs these against
      whatever the registry serves at `@production`. If an agronomist ships a new
      production version and forgets to update the bundled default, the floor
      silently rots -- the drift check fails the build before that ships.
@@ -21,7 +21,7 @@ Two invariants hold these together:
 The variable names are the contract between a template and its render call. Rename
 `{{crop}}` to `{{crop_name}}` here without updating the caller and the
 typed-variable check in registry.py fails loudly at render, not three garbled words
-into a prompt in front of a grower (B3-4).
+into a prompt in front of a grower.
 """
 
 from __future__ import annotations

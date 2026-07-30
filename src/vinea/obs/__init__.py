@@ -1,6 +1,6 @@
 """Observability: trace the graph's own structure, not a flat call log.
 
-DESIGN.md B2: the thing that differentiates this system from a demo is that you
+The thing that differentiates this system from a demo is that you
 can look at a trace and *see the boundary* -- a span per node, FeatureBuilder
 included and visibly NOT an LLM span. This package makes that real:
 
@@ -16,5 +16,5 @@ call with OTel GenAI attributes. So the boundary is visible for free -- a
 FeatureBuilderNode span with no gen_ai.* attributes sitting next to
 IrrigationNode's span that has them. This package configures the exporter and adds
 the two things the SDKs can't know: the provenance tags, and the pre-correction
-capture that keeps the eval honest (B2's circularity trap).
+capture that keeps the eval honest -- the circularity trap.
 """

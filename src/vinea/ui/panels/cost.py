@@ -1,9 +1,9 @@
-"""phase 14 -- what the nights cost, and what is only an estimate.
+"""What the nights cost, and which number is only an estimate.
 
 The panel exists to answer three questions an operator actually asks: what did
 last night cost, which tenant costs the most, and is the cache doing anything.
 
-It also answers a fourth that phase 8 left hanging. `BORDERLINE_FRACTION_OF_RAW`
+It also answers a fourth the router left hanging. `BORDERLINE_FRACTION_OF_RAW`
 was described there as "a cost/quality dial disguised as a threshold", and until
 now there was no way to see the cost half of the dial. There is one here -- but
 it is a *counterfactual*, not a measurement, and the panel says so on screen
@@ -100,7 +100,7 @@ def render(client: ApiClient) -> None:
     st.subheader("What the router avoided")
     model_free = df[df["cost_usd"].isna() & ~df["degraded"]]
     st.caption(
-        "Phase 8 called `BORDERLINE_FRACTION_OF_RAW` a cost/quality dial disguised as a "
+        "`BORDERLINE_FRACTION_OF_RAW` is a cost/quality dial disguised as a "
         "threshold. These are the nights it decided were clear-cut enough to answer without "
         "a model — complete advisories, not degraded ones."
     )

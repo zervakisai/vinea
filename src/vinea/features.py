@@ -1,13 +1,13 @@
 """FeatureBuilder — the deterministic agronomy (the LLM/deterministic boundary).
 
-Python computes the physics exactly and reproducibly; the phase 3 agents only *judge and
+Python computes the physics exactly and reproducibly; the agents only *judge and
 explain* over these numbers. No LLM calls, no I/O — pure functions over validated rows.
 
   Irrigation (#3): ETc = ET₀ × Kc, running soil-water balance -> current depletion.
   Spray      (#4): Delta-T bands + wind + rain-fastness + Spray-Index -> spray windows.
 
 All thresholds come from the injected `Deps` (deps.py) — no magic numbers here.
-TODO(phase 3 #10): invoke these from a non-agent `FeatureBuilder(BaseNode)` whose `run` returns
+TODO: invoke these from a non-agent `FeatureBuilder(BaseNode)` whose `run` returns
 the next node and stashes `FarmFeatures` on `GraphRunContext.state`.
 """
 

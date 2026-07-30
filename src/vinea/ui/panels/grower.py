@@ -1,4 +1,4 @@
-"""S6.2 -- the grower advisory card, and S6.4's trace deep-link.
+"""The grower advisory card, and its trace deep-link.
 
 What a grower actually reads: today's irrigation call, the safe spray windows,
 confidence per leg, the caveats, and a degraded badge when a model wasn't involved.
@@ -80,12 +80,11 @@ def _advisory_card(envelope: dict) -> None:
     for fact in advisory["conflicts_resolved"]:
         st.caption(f"• {fact}")
 
-    # S6.4: deep link to the trace, when there is one.
-    # phase 15: the sources, labelled precisely.
+    # The sources, labelled precisely.
     #
     # "Shown to the model", not "used by the model". `advisory_citations` records
     # what retrieval supplied; asking the model which sources it used would be a
-    # self-report, and phase 12 exists because self-report is not evidence. The
+    # self-report, and self-report is not evidence. The
     # weaker wording is the honest one, and putting the stronger wording on a
     # grower's screen would be the phase's own failure mode.
     citations = envelope.get("citations") or []

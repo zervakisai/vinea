@@ -1,6 +1,6 @@
 """Weather sources: everything that produces `WeatherRow`s, behind one seam.
 
-The whole architectural claim of phase 7 is that a data source is an *adapter*, not a
+The architectural claim is that a data source is an *adapter*, not a
 rewrite: a new source is a new module in here that emits rows matching the
 `WeatherRow` contract, and nothing downstream -- not features, not agents, not
 the graph -- changes or even notices. `base.py` states the seam as a Protocol;

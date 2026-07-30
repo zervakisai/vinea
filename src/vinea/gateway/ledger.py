@@ -52,14 +52,14 @@ class Ledger:
     # How many model requests the wrapper saw. Distinguishes "no gateway" from
     # "no calls at all" when reading the ledger back.
     calls: int = 0
-    # phase 16. Characters of the fully-assembled request, measured at the same
+    # Characters of the fully-assembled request, measured at the same
     # instant as the token count above. Paired numbers from one request are what
     # make a chars-per-token calibration a measurement rather than a restatement
     # of the assumption it is meant to check.
     prompt_chars: int = 0
-    # phase 18, repaying a phase-14 debt. `advisories.model_id` records the
+    # `advisories.model_id` records the
     # gateway ALIAS (`vinea-nightly`), which is the point of an alias and also
-    # weakens one of B2's five drift tags: a year later, "which model produced
+    # weakens one of the five drift tags: a year later, "which model produced
     # this?" needs the gateway's own logs. The provider echoes a model name in
     # every response; this records the LAST one seen, which for a single-model
     # advisory is the model that served it.
@@ -102,7 +102,7 @@ class RunCost:
     output_tokens: int | None
     cost_usd: float | None
     cache_hit: bool | None
-    # phase 16. NULL alongside input_tokens, never on its own: the pair is the
+    # NULL alongside input_tokens, never on its own: the pair is the
     # point, and a character count with no token count beside it calibrates
     # nothing.
     context_chars: int | None = None

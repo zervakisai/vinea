@@ -1,6 +1,6 @@
 """The nightly scheduler: one task per (tenant, run_date), idempotently.
 
-DESIGN.md B1: the advisory runs overnight, once per grower. The scheduler's whole
+The advisory runs overnight, once per grower. The scheduler's whole
 job is to turn "it's tonight, and these tenants exist" into one `advisory_tasks`
 row each -- and to be safe to run more than once, because schedulers get retried,
 double-fired by overlapping cron windows, and run manually alongside the
@@ -32,7 +32,7 @@ def active_tenants(session: Session) -> list[str]:
     """Every tenant with a current grower_config -- the ones to advise tonight.
 
     A tenant is "active" if it has an open config row. This is the multi-tenancy
-    seam (S3.7): tenancy is a data fact (who has config), not a code list, so
+    seam: tenancy is a data fact (who has config), not a code list, so
     onboarding a grower is an INSERT into grower_config and nothing here changes.
     """
     rows = session.exec(

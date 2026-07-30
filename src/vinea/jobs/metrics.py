@@ -1,6 +1,6 @@
 """Queue-depth metrics, sampled into the DB so they can be charted.
 
-DESIGN.md B1's autoscaling argument -- scale the worker fleet on queue depth, not
+The autoscaling argument -- scale the worker fleet on queue depth, not
 CPU, because the work is I/O-bound on the model API -- only becomes actionable if
 queue depth is visible over time. So a worker (or a cron) samples the counts into
 `queue_depth_samples`, and S6's operator dashboard draws the line. This module is

@@ -1,6 +1,6 @@
 """`resolve_model()` — the one function the agents call, and the ladder behind it.
 
-The seam this uses was drawn in phase 3 for a different reason. `agents.py` binds
+The seam this uses was drawn for a different reason. `agents.py` binds
 the model at **run time**, not at construction, so that importing the module
 needs no API key and tests can override it. That decision now carries the
 gateway, which is the same payoff ADR-002's `WeatherSource` gave: a seam drawn
@@ -9,8 +9,8 @@ for one reason paying out for another.
 The ladder, and note which way each rung leans:
 
   1. **No gateway configured.** Return the plain `config.MODEL` *string*, exactly
-     what phase 3 passed. Not a wrapper, not an object -- the type does not even
-     change. A laptop with an `ANTHROPIC_API_KEY` behaves as it did in phase 13,
+     the plain string. Not a wrapper, not an object -- the type does not even
+     change. A laptop with an `ANTHROPIC_API_KEY` behaves as it would without one,
      and the four cost columns stay NULL, which is the honest report: nothing was
      in the path that knew what anything cost.
 
@@ -98,12 +98,12 @@ class MeteredModel(WrapperModel):
             ledger.record_usage(
                 input_tokens=usage.input_tokens or 0,
                 output_tokens=usage.output_tokens or 0,
-                # phase 16: the characters that bought those tokens, counted at
+                # The characters that bought those tokens, counted at
                 # the one point in the system that sees the fully-assembled
                 # request. Paired here so `context.calibration_ratio` divides two
                 # numbers from the SAME call rather than a total by an assumption.
                 prompt_chars=_prompt_chars(messages),
-                # phase 18: what the provider says served this call, as opposed
+                # What the provider says served this call, as opposed
                 # to the alias we asked for.
                 model_name=response.model_name,
             )

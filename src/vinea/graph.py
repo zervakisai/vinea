@@ -19,7 +19,7 @@ builder-based `GraphBuilder`; migrating to it is the v2 path (TODO) — the topo
 Note: Load+Validate is done by `ingest.load_weather` *before* the graph (I/O kept at the edge); the
 graph's first node is the deterministic FeatureBuilder. Irrigation & Spray are independent — chained
 sequentially here; true concurrency would be `asyncio.gather` in one node (an upgrade, not needed for
-a nightly batch). TODO(B2): thread a shared RunUsage through state for graph-wide token totals.
+a nightly batch). TODO: thread a shared RunUsage through state for graph-wide token totals.
 """
 
 from __future__ import annotations

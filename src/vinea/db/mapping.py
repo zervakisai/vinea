@@ -59,7 +59,7 @@ def _from_db(value: datetime) -> datetime:
 def deps_hash(deps: Deps) -> str:
     """A stable fingerprint of a Deps, for provenance.
 
-    This is one of DESIGN.md B2's five drift tags. It answers "were these the
+    This is one of the five drift tags. It answers "were these the
     thresholds in play?" a year later, which matters most for the case B2 calls
     out specifically: an intentional constant change (say `effective_rain_fraction`)
     should visibly move eval scores and be traceable to *that*, not mistaken for

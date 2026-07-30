@@ -4,10 +4,10 @@ Two things the SDKs' automatic spans can't know on their own:
 
   1. The provenance tags -- model_id, degraded, tenant, run_date. These are ours,
      so we open a root span and set them, and every node/model span nests
-     underneath (S4.3).
+     underneath.
   2. The PRE-correction model output. The output_validator corrects a bad number
      before it ships, and the automatic span only ever sees the corrected run. To
-     keep the async eval honest (B2's circularity trap, S4.4) we wrap the run in
+     keep the async eval honest -- the circularity trap below -- we wrap the run in
      `capture_run_messages` and pull out the model's first attempt -- the one the
      guardrail rejected -- so it can be stored and scored later against ground truth.
 
@@ -45,13 +45,13 @@ class InstrumentedResult:
     trace_id: str | None
     pre_correction_output: dict | None
     retried: bool
-    # phase 14. All-NULL when no gateway is configured and no model was metered --
+    # All-NULL when no gateway is configured and no model was metered --
     # the row then says "unknown", which is what it is.
     cost: RunCost = RunCost(input_tokens=None, output_tokens=None, cost_usd=None, cache_hit=None)
-    # phase 15. The passages retrieval SHOWED the model, per leg. Empty when no
+    # The passages retrieval SHOWED the model, per leg. Empty when no
     # corpus is ingested, which is the fail-open floor: no citations, never a weak
     # one. Deliberately not "the sources the model used" -- that would be a
-    # self-report, and phase 12 exists because self-report is not evidence.
+    # self-report, and self-report is not evidence.
     passages: list[RetrievedPassage] = field(default_factory=list)
 
 
@@ -90,8 +90,8 @@ def run_advisory_instrumented(
 ) -> InstrumentedResult:
     """Run the full graph under a tagged root span, capturing trace id + pre-correction.
 
-    The root span makes the provenance tags (S4.3) apply to the whole tree, and
-    gives us a trace id to store on the advisory. `capture_run_messages` (S4.4)
+    The root span makes the provenance tags apply to the whole tree and yields a
+    trace id to store on the advisory. `capture_run_messages`
     wraps the run so a validator-forced correction leaves a record of what the
     model said first.
 
@@ -106,7 +106,7 @@ def run_advisory_instrumented(
     with tracer.start_as_current_span("advisory.run") as span:
         # OTel GenAI-style tags + our own. These sit on the root and describe the
         # whole run, so a bad advisory is traceable to exactly which prompt version
-        # and model produced it (DESIGN.md B3's attributability point).
+        # and model produced it.
         span.set_attribute("vinea.tenant", tenant)
         span.set_attribute("vinea.run_date", run_date.isoformat())
         span.set_attribute("vinea.model_id", model)

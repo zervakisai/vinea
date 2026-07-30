@@ -1,6 +1,6 @@
 """The deterministic-feature router. An `if`, not a second model call.
 
-DESIGN.md B1: most of a night's runs don't need a frontier model's judgement, and
+Most of a night's runs don't need a frontier model's judgement, and
 the deterministic features already say which. A depletion nowhere near the RAW
 trigger, with a forecast that has no candidate spray windows, is not a day anyone
 needs an LLM to reason about -- the answer is "do nothing", and Python already

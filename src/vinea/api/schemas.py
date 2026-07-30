@@ -1,14 +1,16 @@
-"""API response models. The existing contracts, plus the provenance around them.
+"""API response models: the domain contracts, plus the provenance around them.
 
-The advisory itself is `DailyFarmAdvisory` -- the same contract the graph produces,
-the repository stores, and the tests hand-check. The API does not define a second
-advisory shape; that would fork the contract the way a second mapping layer would
-(phase 6). What the API *does* add is a thin envelope for the things that live *beside*
-the advisory on the row -- trace_id, degraded, the prompt/model provenance --
-because a client viewing an advisory wants the deep link and the "was this
-degraded" badge, and those are about the advisory, not part of it (the same
-row-vs-contract split `get_advisory` and `get_advisory_row` make).
+The advisory itself is `DailyFarmAdvisory` — the same contract the graph produces,
+the repository stores and the tests check. The API defines no second advisory
+shape; that would fork the contract the way a second mapping layer forks a schema.
+
+What it adds is a thin envelope for the things that live *beside* the advisory on
+its row — trace id, the degraded flag, model and prompt provenance, cost. A client
+viewing an advisory wants the deep link and the badge, and those are facts about
+the advisory rather than part of it. `repository.get_advisory` and
+`get_advisory_row` draw the same line one layer down.
 """
+
 
 from __future__ import annotations
 
@@ -40,8 +42,8 @@ class CitationOut(BaseModel):
     """One corpus passage that was **shown to** the model for one leg.
 
     Not "used by". `advisory_citations` records what retrieval supplied, because
-    asking a model which sources it used is a self-report and phase 12 exists to
-    establish that self-report is not evidence. Any client rendering these must
+    asking a model which sources it used is a self-report, and self-report is not
+    evidence. Any client rendering these must
     label them accordingly -- the difference is the whole epistemic content.
     """
 
@@ -54,8 +56,8 @@ class AdvisoryEnvelope(BaseModel):
     """An advisory plus the provenance beside it, for GET.
 
     `advisory` is the untouched contract; the rest are the row's columns the UI
-    needs -- the degraded badge, the confidence numbers (promoted to columns in phase 6
-    for exactly this kind of read), and the trace_id deep link.
+    needs -- the degraded badge, the confidence numbers (promoted to columns for
+    exactly this kind of read), and the trace_id deep link.
     """
 
     tenant: str
@@ -66,7 +68,7 @@ class AdvisoryEnvelope(BaseModel):
     model_id: str | None
     prompt_version: str | None
     overall_confidence: float | None
-    # phase 15. Additive and defaulted, so an older client ignores a field it does
+    # Additive and defaulted, so an older client ignores a field it does
     # not know and a night with no corpus ingested simply carries an empty list --
     # which is the fail-open floor surfacing honestly rather than as an error.
     citations: list[CitationOut] = []
@@ -105,7 +107,7 @@ class AdvisorySummary(BaseModel):
     overall_confidence: float | None
     trace_id: str | None
 
-    # phase 14. Additive and optional: an older client ignores four fields it
+    # Additive and optional: an older client ignores four fields it
     # does not know, which is the same property the expand migration relies on
     # one layer down. All None for a night that called no model, or one that ran
     # without a gateway to report cost -- never 0.0, which would read as free.
@@ -140,7 +142,7 @@ class QueueDepthResponse(BaseModel):
 
 
 class QueueDepthPoint(BaseModel):
-    """One point on the queue-depth-over-time chart (S6.3)."""
+    """One point on the queue-depth-over-time chart."""
 
     sampled_at: datetime
     queued: int

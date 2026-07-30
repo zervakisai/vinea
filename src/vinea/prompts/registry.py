@@ -5,7 +5,7 @@ fully-rendered instructions string plus where the template came from, and it
 **never raises** for a registry problem -- the fail-open floor guarantees a
 coherent prompt no matter what.
 
-The ladder (DESIGN.md B3, S7.2), in order:
+The ladder, in order:
 
   1. Fresh cache      -> serve it.                          source = "cache"
   2. Stale cache      -> serve it, revalidate in background. source = "cache"
@@ -22,7 +22,7 @@ five drift tags are attributability for the decision.
 Templating is `{{variable}}` (Langfuse's syntax, so the same template renders
 here and there). The renderer is *strict on missing variables*: a placeholder
 with no matching variable raises `TemplateError` -- the typed-variable
-governance point (B3-4). A template that still says `{{crop}}` after the field
+governance point. A template that still says `{{crop}}` after the field
 was renamed to `{{crop_name}}` fails at render with a clear message, not three
 garbled words into a prompt in front of a grower.
 """
@@ -41,7 +41,7 @@ from vinea.prompts.defaults import BUNDLED_DEFAULTS
 
 # The deadline a single fetch may take before we fall through to the floor.
 # Short on purpose: the registry is never allowed to add real latency to a
-# grower's request (B3). Missed -> bundled default, next request tries again.
+# grower's request. Missed -> bundled default, next request tries again.
 FETCH_DEADLINE_SECONDS = 0.5
 
 _PLACEHOLDER = re.compile(r"\{\{\s*(\w+)\s*\}\}")
@@ -53,7 +53,7 @@ _revalidate_lock = threading.Lock()
 
 
 class TemplateError(ValueError):
-    """A template referenced a variable that wasn't provided (B3-4)."""
+    """A template referenced a variable that wasn't provided."""
 
 
 @dataclass(frozen=True)

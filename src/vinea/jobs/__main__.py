@@ -1,6 +1,6 @@
 """`python -m vinea.jobs` -- enqueue a night, drain it, or inspect the queue.
 
-A thin operational CLI over the phase 8 pieces, so the queue is drivable by hand for
+A thin operational CLI over the queue, so it is drivable by hand for
 the verification steps and for a real cron entrypoint. Deployment wires a
 scheduler (cron, systemd timer, cloud scheduler) to `enqueue`, and a process
 manager to `work`; both are one command here.
@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
         with Session(engine) as session:
             # Every command here is an operator action across tenants -- enqueue
             # the night for all of them, read global queue depth, revive a failed
-            # task. Declared once per command rather than per query (phase 17).
+            # task. Declared once per command rather than per query.
             scope_to_ops(session)
             newly = scheduler.enqueue_nightly(session, run_date=args.run_date, tenants=args.tenant)
         print(f"enqueued {len(newly)} new task(s) for {args.run_date}: {', '.join(newly) or '(none)'}")

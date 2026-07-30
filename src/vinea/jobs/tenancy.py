@@ -1,20 +1,20 @@
 """Multi-tenancy: keep tenants' costs apart the way their data already is.
 
-DESIGN.md B1: more than one grower, more than one org, means costs kept separate
+More than one grower, more than one org, means costs kept separate
 the same way data is -- a budget per tenant so one noisy sensor feed can't starve
 everyone else's quota, a cache namespaced by tenant so one grower's numbers never
 leak into another's lookup, and region as a config value on the tenant record
-(already done: `grower_config.region`, phase 6).
+(`grower_config.region`).
 
 Crucially, none of this changes what a *single* day's advisory computation looks
 like. It's entirely about how many run at once and who pays for what. That's why
 this is a small module beside the worker rather than a change to the graph or the
 agents.
 
-The anti-pattern this file exists to avoid is the one DESIGN.md calls out:
-semantic caching. Close-enough inputs do NOT mean close-enough decisions here -- a
-depletion of 67.4mm and 67.6mm sit a hair apart in any embedding space and on
-opposite sides of the irrigation trigger. So the cache key is an exact
+The anti-pattern this file exists to avoid is semantic caching. Close-enough
+inputs do NOT mean close-enough decisions here -- a depletion of 67.4 mm and
+67.6 mm sit a hair apart in any embedding space and on opposite sides of the
+irrigation trigger. So the cache key is an exact
 deterministic fingerprint (tenant + run_date + deps_hash), never a similarity
 match. The `feature_cache` table already keys exactly this way; this module is the
 tenant-namespacing discipline around it.

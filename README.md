@@ -45,22 +45,28 @@ git checkout main
 | 17 | Security hardening | [17](docs/phases/17-security-hardening.md) | A control that reports success while doing nothing |
 | 18 | SLOs & operations | [18](docs/phases/18-slos-and-operations.md) | Most systems already have a deadline, and it is the wrong one |
 
-The production layers do not reach into the core built in phases 1–4. That is a
-checkable claim, not a slogan — and worth checking *precisely*, because which files
-are exempt is the interesting part:
+Nothing built on top reaches into the six files that compute the agronomy. That is
+a checkable claim, and it is checked by a test rather than asserted:
 
 ```bash
-# Unchanged from phase 4 all the way to phase 18 — the physics, the contracts,
-# the crop config, the topology, the conflict facts, the orchestration entry:
-git diff --ignore-blank-lines phase-04 phase-18 -- \
-  src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
-  src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
+uv run pytest tests/test_core_unchanged.py -v
+```
 
-# Additive only — not one line removed:
-git diff phase-04 phase-18 -- src/vinea/ingest.py src/vinea/config.py
+It compares the **parsed code with docstrings stripped** against `phase-04`, for
+`features.py`, `contracts.py`, `deps.py`, `graph.py`, `reconcile.py` and
+`pipeline.py`. Comments never appear in an AST, so prose can be rewritten; logic
+cannot. A changed constant, a renamed variable or a reordered argument all fail it.
 
-# Genuinely changed, and you should expect these to be:
-git diff phase-04 phase-18 -- src/vinea/agents.py src/vinea/cli.py
+This replaced a `git diff --ignore-blank-lines` command, which was a proxy: it
+answered "did the text change" when the claim is "did the logic change", and went
+red the first time comments in those files were rewritten. It also included a test
+that the comparison would notice a real change, because a check that cannot fail
+is not a check.
+
+The files that *did* change, and should have:
+
+```bash
+git diff phase-04 HEAD -- src/vinea/agents.py src/vinea/cli.py   # wiring at the edges
 ```
 
 `agents.py` changes in phase 12, when the instruction f-strings become registry

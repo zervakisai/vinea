@@ -1,12 +1,12 @@
 """A complete advisory with no model call. The boundary, made persistable.
 
 the core's CLI already proves the deterministic core can stand on its own -- run it
-with no API key and it prints a full report. phase 8 needs that same report as a stored
+with no API key and it prints a full report. The batch needs that same report as a stored
 `DailyFarmAdvisory`, flagged `degraded=true` on the row, for two situations:
 
-  1. No API key configured (S3.5). The worker can't run the agents, but the grower
+  1. No API key configured. The worker can't run the agents, but the grower
      still needs an answer, and the numbers are all there.
-  2. The router judged the day too clear-cut to spend a model on (S3.6). Same
+  2. The router judged the day too clear-cut to spend a model on. Same
      deterministic answer, reached on purpose rather than by necessity.
 
 Every field here is Python. The rationale/summary strings -- the fields the LLM

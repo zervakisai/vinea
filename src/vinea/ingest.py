@@ -4,11 +4,11 @@ This module owns robustness for DATA. A swallowed NaN/inf poisons the
 running water balance (`nan + x == nan`), so "missing/non-finite" is made an *explicit
 typed state* (`None`) that a policy layer routes, rather than a silent crash or poison.
 
-Timezone policy (phase 1): CSV timestamps are ISO-8601 with **no offset** (e.g.
+Timezone policy: CSV timestamps are ISO-8601 with **no offset** (e.g.
 `2026-06-28T00:00:00`), so they parse as **tz-naive** datetimes. We treat them — and the
 `run_date` used for staleness — as the **same site-local wall-clock zone** (Peloponnese).
 Mixing a UTC series with a local `run_date` would skew `staleness_hours` by the offset.
-TODO(phase 2): if a zone ever becomes known, normalize both sides to UTC.
+TODO: if a zone ever becomes known, normalize both sides to UTC.
 
 Pure standard-library Python (csv + datetime) — no pandas, no LLM, no agent code.
 (pandas `reindex(...).asfreq('h')` would be the convenience equivalent of gap detection.)
@@ -52,7 +52,7 @@ _NUMERIC_FIELDS = (
 )
 
 # Fields where a missing value means the hour is physically NOT sprayable (never guessed).
-# Counted separately and penalized harder; the actual window-exclusion lands in phase 2 (#4).
+# Counted separately and penalised harder; the window exclusion itself is in features.py.
 SPRAY_CRITICAL_FIELDS = ("delta_t_c", "wind_ms")
 
 
@@ -77,8 +77,8 @@ class WeatherRow(BaseModel):
     vpd_kpa: float | None = Field(default=None, alias="VPD (kPa)")
     delta_t_c: float | None = Field(default=None, alias="Delta T (°C)")
     wind_dir_deg: float | None = Field(default=None, alias="Wind Direction (°)")
-    ghi_wm2: float | None = Field(default=None, alias="Solar Irradiance (GHI) (W/m2)")  # phase 3: daylight bounds
-    # TODO(phase 4+): Pressure (hPa), Cloud Cover (%), Snowfall (mm/h) are parsed-but-unused
+    ghi_wm2: float | None = Field(default=None, alias="Solar Irradiance (GHI) (W/m2)")  # daylight bounds
+    # TODO: Pressure (hPa), Cloud Cover (%), Snowfall (mm/h) are parsed-but-unused
     #            (dropped via extra='ignore') — intentionally cut, not forgotten.
 
     @field_validator(*_NUMERIC_FIELDS, mode="before")
@@ -172,7 +172,7 @@ def _load_one(path: Path) -> tuple[list[WeatherRow], int, int, int, int, int, li
                     f"{path.name}: dropped row at line {lineno} ({exc.error_count()} error(s))"
                 )
 
-    # phase 2's water balance is an order-dependent running sum -> always return sorted.
+    # The water balance is an order-dependent running sum -> always return sorted.
     rows.sort(key=lambda r: r.timestamp)
 
     present_numeric = _present(_NUMERIC_FIELDS, fieldnames)
@@ -265,7 +265,7 @@ def load_weather(
 
 
 # ---------------------------------------------------------------------------
-# The seam (phase 7 / S2.0): one quality assessment, shared by every source
+# The seam: one quality assessment, shared by every source
 # ---------------------------------------------------------------------------
 
 

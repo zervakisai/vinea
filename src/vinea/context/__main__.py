@@ -3,8 +3,8 @@
     python -m vinea.context                 # both legs, on the committed dataset
     python -m vinea.context --calibrate     # the measured chars-per-token, if any
 
-Exists because phase 15 tripled the irrigation leg's context in one commit and
-nothing in the system could see it. A command that prints the table is what turns
+Exists because retrieval once tripled the irrigation leg's context in a single
+commit and nothing in the system could see it. A command that prints the table is what turns
 "the prompt got big" from a discovery into a number you can check before opening
 a pull request.
 

@@ -1,6 +1,6 @@
 """A ceiling on retrieved context, enforced by dropping whole passages.
 
-Phase 15 handed this phase a bill and a warning in the same comment:
+Retrieval left a bill and a warning in the same comment:
 
     TOP_K = 3   # rag/retrieve.py
     # ...this is exactly the kind of constant that grows to ten because nobody
@@ -16,8 +16,8 @@ anywhere from 600 to 3 600. A token budget is the unit that means something.
 The one rule this module exists to enforce. When the budget is exceeded, the
 lowest-ranked passage is dropped **entirely**; nothing is cut mid-passage.
 
-That is not tidiness. Phase 15's promise is that a citation points at something a
-reader can go and check, and a truncated passage still arrives labelled
+That is not tidiness. The promise a citation makes is that it points at something
+a reader can go and check, and a truncated passage still arrives labelled
 "Chapter 8 — ETc under soil water and salinity stress conditions". The label is
 now a claim about text the model never saw the end of. A reader who follows it
 finds a paragraph that does not say what the advisory said it says — and
@@ -25,8 +25,8 @@ concludes the citations are unreliable *in general*, which is the correct
 inference from their point of view and a disaster from ours.
 
 A missing citation leaves a claim unverified, and a reader knows to be sceptical.
-A truncated one moves the claim to falsely verified. Same asymmetry phase 15 built
-its fail-open floor on, one layer up.
+A truncated one moves the claim to falsely verified -- the same asymmetry the
+retrieval floor is built on, one layer up.
 
 ## Why not summarise instead
 
@@ -50,7 +50,7 @@ from vinea.context.accounting import estimate_tokens
 # fixed ~125 tokens whatever survives.
 #
 # 900 is not a round number and it does not trim anything today. It encodes a
-# measurement — phase 15's recall gate, re-run at each depth:
+# measurement — the recall gate, re-run at each retrieval depth:
 #
 #   top_k=1   recall 0.83   286 tokens
 #   top_k=2   recall 0.92   576 tokens
@@ -106,7 +106,7 @@ def fit_to_budget(passages: list, *, budget_tokens: int = DEFAULT_LEG_TOKEN_BUDG
 
     A single passage larger than the whole budget is still kept, alone. The
     alternative is returning nothing, which trades a slightly over-budget prompt
-    for a completely uncited advisory — and phase 15's floor exists for genuine
+    for a completely uncited advisory — and the retrieval floor exists for genuine
     failures, not for arithmetic.
     """
     kept: list = []

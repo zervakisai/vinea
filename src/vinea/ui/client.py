@@ -118,7 +118,7 @@ class ApiClient:
 
 
 def langfuse_trace_url(trace_id: str) -> str:
-    """Deep link to a trace in Langfuse (S6.4).
+    """Deep link to a trace in Langfuse.
 
     Built from the same LANGFUSE_HOST the exporter uses (obs/tracing.py), so the
     link points at the store the trace actually went to. If Langfuse isn't

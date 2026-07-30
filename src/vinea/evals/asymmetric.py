@@ -1,6 +1,6 @@
 """The asymmetric-cost evaluator: missing an irrigation costs ~5x a false one.
 
-DESIGN.md B2: missing an irrigation matters more than an unnecessary one -- a
+Missing an irrigation matters more than an unnecessary one -- a
 vine that goes dry loses the season; a vine watered a day early loses nothing.
 So the cost of the two error directions is asymmetric, roughly 5x, and that
 asymmetry lives HERE, as a custom evaluator, **not** inside `features.py`. The

@@ -6,7 +6,7 @@ floor here is emptier:
 
   1. Retrieval works  -> passages, recorded in the citation ledger.
   2. Anything at all goes wrong -> **no passages**, and the advisory is produced
-     exactly as it was in phase 14.
+     exactly as it was in.
 
 There is no "serve a weaker passage" rung, and that asymmetry is the point. Every
 other fail-open path in this system degrades toward a *correct but lesser* answer:
@@ -67,8 +67,8 @@ REFERENCE_CONTRACT = (
     "configuration is correct",     # config wins any disagreement
 )
 
-# How many passages the *query* returns. Phase 15 chose three because three is a
-# reasonable-looking number, and phase 16 measured what that bought: 4 217
+# How many passages the *query* returns. Three was chosen because three is a
+# reasonable-looking number; measuring what that bought gave 4 217
 # characters, 64% of the irrigation leg's entire context.
 #
 # It stays at three, and the ceiling moved to a different unit. A count is the
@@ -139,7 +139,7 @@ def retrieve_for(
         for rank, h in enumerate(hits, start=1)
     ]
 
-    # phase 16: a token ceiling, enforced by dropping whole low-ranked passages.
+    # A token ceiling, enforced by dropping whole low-ranked passages.
     # Applied HERE rather than in `render_passages` so that what gets cited is
     # exactly what got shown -- trimming after the ledger recorded them would
     # produce citations for passages the model never saw, which is the same

@@ -96,7 +96,7 @@ def make_session(engine: Engine) -> Session:
 
 
 # ---------------------------------------------------------------------------
-# Row-level security scoping (phase 17)
+# Row-level security scoping
 # ---------------------------------------------------------------------------
 #
 # After migration f92c4d1a7b60 every tenant-scoped table carries a policy of the

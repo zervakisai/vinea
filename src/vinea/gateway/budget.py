@@ -1,7 +1,7 @@
 """Down and saying-no are different events. Telling them apart is the whole file.
 
-Phase 8 built one degrade: no model, use the deterministic path. Phase 12 built
-another: no registry, use the bundled prompt. Both are the same shape -- an
+There is one degrade for a missing model: use the deterministic path. And another
+for a missing prompt registry: use the bundled default. Both are the same shape -- an
 auxiliary system is unavailable, so fall toward the thing that always works.
 
 A gateway breaks that symmetry, because it can fail in two ways that look

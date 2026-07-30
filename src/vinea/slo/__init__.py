@@ -1,7 +1,7 @@
 """Service level objectives, measured in SQL over rows that already exist.
 
 Three objectives, and each is a question about the tables this system has been
-filling since phase 6:
+has been filling since it started storing anything:
 
   **Advisory availability** -- did an advisory exist by 06:00 in the grower's own
   morning? `advisories.created_at` and `grower_config.timezone`.
@@ -10,7 +10,7 @@ filling since phase 6:
   histogram: the route is served a few hundred times a day, which is what makes
   the simple approach the correct one.
   **Judgement rate** -- what fraction of advisories came from the deterministic
-  path. `advisories.degraded`, a column since phase 6.
+  path. `advisories.degraded`, a column since.
 
 Why SQL and not a metrics pipeline: a counter can only measure what somebody
 remembered to increment, and every one of these questions is already answerable

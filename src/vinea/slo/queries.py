@@ -7,9 +7,9 @@ produce.
 
 ## The deadline that is not the deadline
 
-`advisory_tasks.deadline_at` exists and is *not* what these queries use. Phase 8
-set it to enqueue-time + 30 minutes and named it precisely: how long the worker
-keeps retrying before giving up. That is a question about the worker's patience.
+`advisory_tasks.deadline_at` exists and is *not* what these queries use. It is
+enqueue-time + 30 minutes, and it is named precisely: how long the worker keeps
+retrying before giving up. That is a question about the worker's patience.
 
 The SLO asks a different question -- when does the grower need this? -- and the
 answer is a wall-clock time in their morning. The two can disagree in the
@@ -124,10 +124,10 @@ def degraded_rate(
 ) -> SLIResult:
     """Fraction of advisories produced without a model.
 
-    Not an error rate. `degraded=true` is a correct outcome that phase 8 built on
-    purpose, and a grower gets real physics from it -- so this can never page. It
-    is an SLO because a fleet running on the deterministic path for a month is
-    correct, useful, and not the product that was built.
+    Not an error rate. `degraded=true` is a correct outcome, built on purpose, and
+    a grower gets real physics from it -- so this can never page. It is an SLO
+    because a fleet running on the deterministic path for a month is correct,
+    useful, and not the product that was built.
     """
     start = today - timedelta(days=window_days)
     row = session.execute(_DEGRADED_SQL, {"start_date": start, "end_date": today}).one()

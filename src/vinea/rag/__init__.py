@@ -25,7 +25,7 @@ Four modules:
                a weak one.
 
 `citations` is the ledger: what was retrieved during one advisory run, collected
-the way phase 14 collects cost, and written to a table as provenance rather than
+the way the cost ledger collects usage, and written to a table as provenance rather than
 into the advisory contract.
 """
 

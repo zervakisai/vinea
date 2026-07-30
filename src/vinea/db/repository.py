@@ -126,7 +126,7 @@ def get_advisory_row(session: Session, *, tenant: str, run_date: date) -> Adviso
 def list_advisory_rows(
     session: Session, *, tenant: str, start: date | None = None, end: date | None = None
 ) -> list[Advisory]:
-    """One tenant's advisories over a date window, newest first (S5.2's GET)."""
+    """One tenant's advisories over a date window, newest first."""
     statement = select(Advisory).where(Advisory.tenant == tenant)
     if start is not None:
         statement = statement.where(Advisory.run_date >= start)
@@ -145,10 +145,10 @@ def list_all_advisory_rows(
     """Advisories across ALL tenants, newest first -- the operator's cross-tenant view.
 
     Separate from `list_advisory_rows` because it deliberately has no tenant
-    filter: the operator quality monitor (S6.4) aggregates degraded rate and
+    filter: the operator quality monitor aggregates degraded rate and
     confidence over everyone. This is ops surface, so the API gates it behind the
     ops key, not a tenant key -- the same tenant-vs-operator credential split as
-    `/ops/queue` (S5.3).
+    `/ops/queue`.
     """
     statement = select(Advisory)
     if start is not None:
@@ -256,7 +256,7 @@ __all__ = [
 
 
 # ---------------------------------------------------------------------------
-# citations (phase 15)
+# citations
 # ---------------------------------------------------------------------------
 
 

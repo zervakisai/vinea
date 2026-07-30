@@ -1,6 +1,6 @@
 """Typed Pydantic v2 contracts — the boundaries between the FeatureBuilder, the three
 agents, and the graph. Pure `pydantic` (zero pydantic-ai / network imports) so they are
-usable directly as `output_type=...` in phase 3 and unit-testable in isolation.
+usable directly as `output_type=...` and unit-testable in isolation.
 
 These models are the enforcement point for "structured outputs &
 grounding" and "clean typed boundaries": `Field` constraints + validators are *runtime

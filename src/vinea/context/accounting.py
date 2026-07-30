@@ -17,9 +17,9 @@ each fails a house rule:
 
 So: characters divided by a constant, reported as an estimate, with a calibration
 function that computes the true ratio from `advisories.input_tokens` whenever a
-gateway has populated them. Phase 14's column becomes phase 16's ground truth,
-which is the nicest thing about this design and the reason it is worth writing
-down: the observability you build for one question answers a different one later.
+gateway has populated them. The cost column becomes the estimator's ground truth,
+which is worth writing down: observability built for one question answers a
+different one later.
 
 `CHARS_PER_TOKEN = 4.0` is the widely-quoted English figure. It is wrong for this
 corpus in a knowable direction — FAO-56 is dense with symbols (`Kc`, `ETo`,
@@ -69,9 +69,9 @@ class ContextReport:
     """Every component of one leg's context, largest contributor findable.
 
     The report exists so the answer to "what is in the prompt?" is a table rather
-    than a reading of three source files. Phase 15's retrieved passages went from
-    nothing to 64% of both legs without anyone deciding that; a report is what
-    turns that from a discovery into a number on a screen.
+    than a reading of three source files. Retrieved passages went from nothing to
+    the majority of both legs without anyone deciding that; a report is what turns
+    that from a discovery into a number on a screen.
     """
 
     leg: str
@@ -129,7 +129,7 @@ def calibration_ratio(session) -> float | None:
 
     So `MeteredModel` records both. It sits at the one place in the system that
     sees the fully-assembled request, immediately before it goes over the wire,
-    and `advisories.context_chars` stores its character count beside phase 14's
+    and `advisories.context_chars` stores its character count beside
     `input_tokens`. Both are NULL together and populated together, which is what
     makes this ratio meaningful rather than notional.
 

@@ -6,7 +6,7 @@ the cache, and the fallback, and a built-in SDK cache would take that control
 away. This module is just "GET the template text"; all the policy lives above
 it.
 
-`push_prompt` exists so the CI drift check (S7.3) and the demo can seed a
+`push_prompt` exists so the CI drift check and the demo can seed a
 production version, and so a test can create one against a live Langfuse.
 Neither is on the request path.
 """

@@ -1,7 +1,7 @@
 """Orchestration entrypoint.
 
-phase 2: load -> validate -> deterministic FeatureBuilder -> FarmFeatures (no LLM yet).
-TODO(phase 3): wire the 3-agent pydantic-graph (Irrigation, Spray, Coordinator) over these
+Load -> validate -> deterministic FeatureBuilder -> FarmFeatures. No model involved.
+TODO: wire the 3-agent pydantic-graph (Irrigation, Spray, Coordinator) over these
           features via `graph.run(...)`, returning a `DailyFarmAdvisory`. The FeatureBuilder
           becomes a non-agent `BaseNode`; FarmFeatures lands on `GraphRunContext.state`.
 """

@@ -67,9 +67,9 @@ def _utcnow_column(**kwargs: object) -> Column:
 class ReviewerRole(enum.StrEnum):
     """Who reviewed an advisory -- a closed set the system branches on.
 
-    An ENUM, not free text, because DESIGN.md's B2 is explicit that these are
-    two queues and not one: an agronomist judges *correctness*, a grower judges
-    *clarity* of the summary they read, and they will disagree. Code weights
+    An ENUM, not free text, because these are two review queues and not one: an
+    agronomist judges *correctness*, a grower judges *clarity* of the summary they
+    read, and they will disagree. Code weights
     their disagreements differently when promoting golden cases, so a typo'd
     'agronimist' must fail at write time rather than quietly become a third
     category nothing handles.
@@ -189,9 +189,9 @@ class GrowerConfig(SQLModel, table=True):
     tenant: str = Field(sa_column=Column(Text, nullable=False))
     location: str = Field(sa_column=Column(Text, nullable=False))
     # Region as a config value on the tenant record, not a code path -- the
-    # EU-residency point from DESIGN.md B1.
+    # EU data residency is a config value, not a code path.
     region: str = Field(sa_column=Column(Text, nullable=False))
-    # phase 18. The SLO is "an advisory by 06:00 LOCAL", and a vineyard in Nemea
+    # The availability SLO is "an advisory by 06:00 LOCAL", and a vineyard in Nemea
     # and one in Mendoza do not share a morning. An IANA zone name, not an offset:
     # offsets move twice a year and a stored one is wrong for half of it.
     #
@@ -251,7 +251,7 @@ class Advisory(SQLModel, table=True):
     this text may have been re-pointed since. So the output is stored, and so is
     the context that explains it.
 
-    `UNIQUE (tenant, run_date)` is not decoration -- it *is* S3.2's idempotency
+    `UNIQUE (tenant, run_date)` is not decoration -- it *is* the idempotency
     key. A night that re-runs UPSERTs onto the same row instead of writing a
     second advisory, which is what makes the whole queue safely re-runnable.
 
@@ -291,13 +291,13 @@ class Advisory(SQLModel, table=True):
     overall_confidence: float | None = Field(default=None, sa_column=Column(Float))
 
     # --- provenance ---------------------------------------------------------
-    # Together with dataset_version these are DESIGN.md B2's five drift tags:
+    # With dataset_version these are the five drift tags:
     # when a score moves, exactly one of these moved with it, and the tags say
     # which. Nullable because S1 writes advisories before S4/S7 exist to fill
     # them -- a column that arrives empty is honest; a fabricated default is not.
     prompt_name: str | None = Field(default=None, sa_column=Column(Text))
     prompt_version: str | None = Field(default=None, sa_column=Column(Text))
-    # registry | cache | fallback -- S7.2's ladder. Tells you whether this
+    # registry | cache | fallback -- the prompt-fetch ladder. Tells you whether this
     # advisory's wording came from the live prompt or yesterday's.
     prompt_source: str | None = Field(default=None, sa_column=Column(Text))
     model_id: str | None = Field(default=None, sa_column=Column(Text))
@@ -305,20 +305,20 @@ class Advisory(SQLModel, table=True):
     code_sha: str | None = Field(default=None, sa_column=Column(Text))
     dataset_version: str | None = Field(default=None, sa_column=Column(Text))
 
-    # S4.3 deep-links the UI to the trace via this.
+    # The UI deep-links to the trace via this.
     trace_id: str | None = Field(default=None, sa_column=Column(Text, index=True))
-    # S3.5: features-only, no model was called.
+    # Features-only: no model was called.
     degraded: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, server_default="false"))
 
     # The guardrail protects the grower; this column protects the measurement.
     # If the output_validator corrected the model before anything was logged, an
     # async eval would score the *corrected* answer and report success on a model
-    # that got it wrong every time (DESIGN.md B2's circularity trap). This is the
+    # that got it wrong every time -- the circularity trap. This is the
     # only record of what the model actually said, not reconstructible from
-    # anything else here. Written by S4.4; NULL until then.
+    # anything else here. NULL when no correction was forced.
     pre_correction_output: dict | None = Field(default=None, sa_column=Column(JSONB))
 
-    # --- cost (phase 14) ----------------------------------------------------
+    # --- cost ----------------------------------------------------
     # ADR-001's test, applied to money: could this be recomputed from surviving
     # inputs? The tokens could. The *price in force the night the call was made*
     # could not -- providers reprice, and `tokens x price_today` computed in March
@@ -338,7 +338,7 @@ class Advisory(SQLModel, table=True):
     # exact-match cache -- the column answers "did this advisory cost anything
     # new?", and two thirds cached still bought a completion.
     cache_hit: bool | None = Field(default=None, sa_column=Column(Boolean))
-    # phase 16. Characters of the assembled request, recorded at the same instant
+    # Characters of the assembled request, recorded at the same instant
     # as `input_tokens` and NULL whenever that is. The pair is what makes a
     # chars-per-token calibration a measurement; either number alone restates an
     # assumption. Not recomputable -- the retrieved passages that night depend on
@@ -364,7 +364,7 @@ class EvalRun(SQLModel, table=True):
     """One evaluator's score for one run, tagged with everything that could
     have moved it.
 
-    DESIGN.md B2: drift is two questions kept separate -- did the *model* change,
+    Drift is two questions kept separate -- did the *model* change,
     or did the *inputs*? These five tags are how a moved score gets attributed,
     including the case where nothing about the model changed and the *oracle
     itself* did (a deliberate constant change like effective_rain_fraction should
@@ -390,9 +390,9 @@ class EvalRun(SQLModel, table=True):
 
     evaluator: str = Field(sa_column=Column(Text, nullable=False))
     score: float = Field(sa_column=Column(Float, nullable=False))
-    # Its own column rather than buried in `detail`: DESIGN.md B2 names this "the
-    # number to keep near 100%", and a number you gate promotion on should be
-    # queryable without parsing JSON.
+    # Its own column rather than buried in `detail`: this is the number to keep
+    # near 100%, and a number you gate promotion on should be queryable without
+    # parsing JSON.
     recall_should_irrigate: float | None = Field(default=None, sa_column=Column(Float))
     passed: bool = Field(sa_column=Column(Boolean, nullable=False))
     detail: dict | None = Field(default=None, sa_column=Column(JSONB))
@@ -445,7 +445,7 @@ class Annotation(SQLModel, table=True):
     leg: str | None = Field(default=None, sa_column=Column(Text))
     comment: str | None = Field(default=None, sa_column=Column(Text))
 
-    # How the eval set gets harder over time instead of static (B2).
+    # How the eval set gets harder over time instead of staying static.
     promoted_to_golden: bool = Field(
         default=False, sa_column=Column(Boolean, nullable=False, server_default="false")
     )
@@ -489,7 +489,7 @@ class FeatureCache(SQLModel, table=True):
 
 
 # ---------------------------------------------------------------------------
-# phase 8: the queue. Not Redis -- see ADR-003.
+# The queue. Not Redis -- see ADR-003.
 # ---------------------------------------------------------------------------
 
 
@@ -503,7 +503,7 @@ class AdvisoryTask(SQLModel, table=True):
     work that produces them.
 
     The natural key is `(tenant, run_date)`, the SAME key as `advisories`. That
-    is deliberate and load-bearing: enqueuing a night is idempotent (S3.2), so a
+    is deliberate and load-bearing: enqueuing a night is idempotent, so a
     scheduler that fires twice, or a manual re-run, does not create a second
     task. Combined with the advisory UPSERT on the same key, the whole pipeline
     is re-runnable end to end.
@@ -541,7 +541,7 @@ class AdvisoryTask(SQLModel, table=True):
 
     # Retry accounting. `attempts` counts *worker* attempts on the day -- NOT the
     # SDK's per-call ModelRetry attempts, a different layer that must not be
-    # conflated (the double-retry footgun, S3.3). `max_attempts` is the worker's
+    # conflated -- that is the double-retry footgun. `max_attempts` is the worker's
     # own give-up threshold.
     attempts: int = Field(sa_column=Column(Integer, nullable=False, server_default="0"))
     max_attempts: int = Field(sa_column=Column(Integer, nullable=False, server_default="3"))
@@ -550,7 +550,7 @@ class AdvisoryTask(SQLModel, table=True):
     # exponential backoff lives here, as data, so it survives a worker crash.
     run_after: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 
-    # ONE deadline for the whole day, set at creation and NEVER extended (S3.3).
+    # ONE deadline for the whole day, set at creation and NEVER extended.
     # Checked on every attempt; once passed the task fails permanently regardless
     # of remaining attempts, so one stuck day can't consume the night's budget a
     # retry at a time.
@@ -644,8 +644,8 @@ class AdvisoryCitation(SQLModel, table=True):
     That distinction is the phase's central honesty, and the choice was between:
 
       * ask the model which sources it used — a stronger claim, and a *self
-        report*. Phase 12 spent a whole phase establishing that self-report is
-        not evidence, and a model can name a citation it never read.
+        report*, and self-report is not evidence: a model can name a citation it
+        never read.
       * record what retrieval put in front of it — a weaker claim, and a *fact
         about the run*. It cannot be gamed, needs no model cooperation, and is
         reproducible from this table alone.
@@ -654,9 +654,9 @@ class AdvisoryCitation(SQLModel, table=True):
     "sources used", because the difference is the entire epistemic content.
 
     Why a table and not a field on `DailyFarmAdvisory`: the contract is protected
-    (phase 4's invariant), and more to the point a citation is *about* the
+    (see CONTRIBUTING.md), and more to the point a citation is *about* the
     advisory the way `trace_id`, `model_id` and `cost_usd` are about it — which
-    `repository.get_advisory_row` already decided in phase 6. Shaped like
+    `repository.get_advisory_row` already decided. Shaped like
     `annotations` so "which passages get cited most" is a query, not a JSONB scan.
     """
 
@@ -761,7 +761,7 @@ class SLOBreach(SQLModel, table=True):
 class QueueDepthSample(SQLModel, table=True):
     """A point-in-time snapshot of how deep the queue is. Metrics, in the DB.
 
-    DESIGN.md B1 argues you autoscale this fleet on queue depth, not CPU, because
+    This fleet autoscales on queue depth, not CPU, because
     the workers are I/O-bound on the model API and CPU sits idle right up until
     the queue backs up. That argument is only actionable if queue depth is a
     number you can *see* over time -- so the worker samples it into this table,

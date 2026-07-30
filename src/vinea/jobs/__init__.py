@@ -1,6 +1,6 @@
 """Batch execution: the queue, the workers, the scheduler, and the router.
 
-phase 8 is where one advisory becomes a fleet of them running overnight. The pieces:
+Where one advisory becomes a fleet of them running overnight. The pieces:
 
   degraded.py   build a DailyFarmAdvisory with NO model call, deterministically
   router.py     decide, from the features alone, whether a day even needs the LLM

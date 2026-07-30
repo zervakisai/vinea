@@ -4,7 +4,7 @@ Four things live here and nothing else does:
 
   `settings`  reads the environment and answers one question -- is a gateway
               configured at all? Everything downstream branches on that, and the
-              *unset* answer must leave the system exactly as phase 13 left it.
+              *unset* answer must leave the system exactly as it was without one.
   `ledger`    a per-run tally of what the model calls actually consumed. Tokens
               come from the SDK, cost and cache-hit come from the gateway's
               response headers, and neither is ever invented.

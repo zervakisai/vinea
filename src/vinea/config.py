@@ -1,7 +1,7 @@
 """Thin configuration seam: load `.env`, expose the model string and default paths.
 
-Deliberately minimal at phase 1. Real crop parameters (Kc, thresholds, Delta-T/wind bands)
-arrive as injected dependencies in phase 2 (#6 — deps_type), NOT as globals here.
+Deliberately minimal. Real crop parameters (Kc, thresholds, Delta-T/wind bands) are
+injected dependencies (`deps.Deps`), never globals here.
 """
 
 from __future__ import annotations
@@ -24,13 +24,13 @@ DEFAULT_DATA_DIR: Path = Path(os.getenv("VINEA_DATA_DIR", PROJECT_ROOT / "data")
 
 # Any Pydantic AI model string ("provider:model"). The provider key is read from the env
 # by the SDK (ANTHROPIC_API_KEY / OPENAI_API_KEY / GEMINI_API_KEY). No key lives in code.
-# The exact id is finalized when agents are wired in phase 3; phase 1 never calls a model.
+# Importing this module never calls a model; the provider is built at run time.
 MODEL: str = os.getenv("VINEA_MODEL", "anthropic:claude-sonnet-4-5")
 
 # Last-history timestamp older than this (relative to run_date) -> flag data as stale.
 STALENESS_THRESHOLD_HOURS: int = 48
 
-# Provider -> env var holding its key. The batch worker (phase 8) reads this to decide
+# Provider -> env var holding its key. The batch worker reads this to decide
 # whether it can run the model at all, or must fall back to the deterministic
 # (degraded) advisory. An unknown provider is attempted anyway.
 _KEY_ENV = {
@@ -45,8 +45,7 @@ _KEY_ENV = {
 def has_provider_key(model: str = MODEL) -> bool:
     """True if the provider key for `model` itself is set (or the provider is unknown).
 
-    Phase 1's original `has_api_key`, kept under its own name because phase 14
-    needs the narrow question as well as the wide one. The gateway's failover rung
+    The narrow question, kept under its own name because both are needed. The gateway's failover rung
     can only exist if the deployment holds a *provider* key next to the virtual
     key -- and the whole point of virtual keys is that it usually should not.
     """
@@ -57,7 +56,7 @@ def has_provider_key(model: str = MODEL) -> bool:
 def has_api_key(model: str = MODEL) -> bool:
     """True if a model call is possible at all: via a gateway key, or a provider key.
 
-    phase 14 widened the question this answers. A gateway deployment holds a
+    Wider than `has_provider_key`. A gateway deployment holds a
     LiteLLM *virtual* key and, by design, may hold no provider key whatsoever --
     that is the security benefit of running one. Asking for ANTHROPIC_API_KEY
     there would send every night down the deterministic degrade with a perfectly

@@ -37,10 +37,13 @@ The single claim the whole sequence is arranged to demonstrate is that the
 **physics and the topology** from phases 1–4 never have to change again:
 
 ```bash
-git diff --ignore-blank-lines phase-04 phase-18 -- \
-  src/vinea/features.py src/vinea/contracts.py src/vinea/deps.py \
-  src/vinea/graph.py src/vinea/reconcile.py src/vinea/pipeline.py     # empty
+uv run pytest tests/test_core_unchanged.py -v
 ```
+
+(That used to be a `git diff` over the same six files. It became a test when the
+comments in those files were rewritten for a product audience: a diff answers "did
+the text change", and the claim is about the logic. The test compares parsed code
+with docstrings stripped, which is the stricter question.)
 
 Note how narrowly that has to be stated to stay true. `ingest.py` and `config.py`
 grow (additively — nothing removed). `agents.py` and `cli.py` genuinely change:

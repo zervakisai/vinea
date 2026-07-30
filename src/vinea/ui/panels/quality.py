@@ -1,4 +1,4 @@
-"""S6.4 -- the quality monitor: confidence distribution, degraded rate, trace links.
+"""The quality monitor: confidence distribution, degraded rate, trace links.
 
 Cross-tenant health at a glance: how confident are the advisories, what fraction ran
 degraded (no model), and a table linking each to its trace. All aggregated

@@ -2,7 +2,7 @@
 
 Each agent has output_type=<typed contract>, deps_type=<crop config + the day's deterministic
 features> (so dynamic instructions and output_validators can ground-check), one dynamic
-@agent.instructions seam (where a registry-fetched prompt would land — B3), and one
+@agent.instructions seam (where a registry-fetched prompt lands), and one
 @agent.output_validator that raises ModelRetry on ungrounded output (no invented numbers).
 
 The agents NEVER recompute physics — they reason over the FeatureBuilder's clean numbers.
@@ -52,9 +52,9 @@ class IrrDeps:
     data_quality: DataQuality
     target_date: date
     run_date: date
-    # phase 15. Reference passages from FAO-56, for EXPLANATION only. Default
+    # Reference passages from FAO-56, for EXPLANATION only. Default
     # empty, so every existing caller and every test is unaffected and the agent
-    # behaves exactly as it did in phase 14 when nothing was retrieved.
+    # behaves exactly as it does when nothing is retrieved.
     passages: list = field(default_factory=list)
 
 
@@ -98,7 +98,7 @@ def _degrade(confidence: float, dq: DataQuality) -> tuple[float, str | None]:
 
 # TODO(robustness — consciously cut, and how I'd add them):
 #  - provider rate-limit retries/backoff, timeouts-as-deadlines, circuit breakers, cross-provider
-#    fallback live in phase 8 runtime, not this project.
+#    fallback belong to the batch runtime, not here.
 #  - property-based/fuzz tests + CSV schema-drift detection -> a separate hardening pass.
 #  - CI: pytest + ruff gate in GitHub Actions (cut per brief).
 #  - on retry-exhaustion the CLI degrades to deterministic features; a richer path would synthesize
@@ -108,7 +108,7 @@ def _degrade(confidence: float, dq: DataQuality) -> tuple[float, str | None]:
 # --- dynamic instruction renderers (pure fns so they're unit-testable) -----------
 
 def render_irrigation_context(d: IrrDeps) -> str:
-    # The B3 seam (phase 12): the framing is a registry template fetched by name@label;
+    # The B3 seam: the framing is a registry template fetched by name@label;
     # the day's numbers are substituted here, locally, and never reach the
     # registry. The bundled default renders the identical text, so with the
     # registry unconfigured (tests, offline) behaviour is unchanged.
@@ -117,7 +117,7 @@ def render_irrigation_context(d: IrrDeps) -> str:
         defaults.IRRIGATION,
         _prompt_label(),
         {
-            # phase 17: bounded before interpolation. Not a filter -- see
+            # Bounded before interpolation. Not a filter -- see
             # security.py. The control that stops an injection changing a NUMBER
             # is the output validator below; this stops one config field being
             # 40 KB and becoming the prompt.
@@ -166,7 +166,7 @@ def render_coordinator_context(d: CoordDeps) -> str:
         defaults.COORDINATOR,
         _prompt_label(),
         {
-            # phase 17: bounded before interpolation. Not a filter -- see
+            # Bounded before interpolation. Not a filter -- see
             # security.py. The control that stops an injection changing a NUMBER
             # is the output validator below; this stops one config field being
             # 40 KB and becoming the prompt.
@@ -201,7 +201,7 @@ def render_spray_input(sf: SprayFeatures) -> str:
         "\n".join(f"  - {w.start:%H:%M}-{w.end:%H:%M}: {w.reason}" for w in sf.windows)
         or "  (none)"
     )
-    # phase 16: omit per-hour fields that are None for EVERY hour, and say so once.
+    # Omit per-hour fields that are None for EVERY hour, and say so once instead.
     #
     # `index=None` repeated 24 times is 264 characters restating a single fact --
     # this feed carries no vendor spray index. "Missing stays missing" was always
@@ -293,19 +293,19 @@ _COORD_STATIC = (
 # Model is bound at RUN time (model=resolve_model()), not construction — so importing this module
 # needs no API key (the provider is only instantiated on a real run), and tests override it
 # with TestModel (override wins in Agent._get_model, so the resolved model is never inferred).
-# phase 14 turned that argument into a `str` from resolve_model() when no gateway is configured:
+# resolve_model() returns a `str` when no gateway is configured, and that matters:
 # a string stays lazy under an override, an eagerly-built Model would not.
 irrigation_agent = Agent(
     deps_type=IrrDeps, output_type=IrrigationAdvice,
-    instructions=_IRR_STATIC, retries=2,  # TODO(B2): observability via capabilities=[Instrumentation(...)] + Logfire
+    instructions=_IRR_STATIC, retries=2,  # TODO: observability via capabilities=[Instrumentation(...)] + Logfire
 )
 spray_agent = Agent(
     deps_type=SprayDeps, output_type=SprayAdvice,
-    instructions=_SPRAY_STATIC, retries=2,  # TODO(B2): observability via capabilities=[Instrumentation(...)] + Logfire
+    instructions=_SPRAY_STATIC, retries=2,  # TODO: observability via capabilities=[Instrumentation(...)] + Logfire
 )
 coordinator_agent = Agent(
     deps_type=CoordDeps, output_type=Reconciliation,  # sub-advices re-attached in code (no verbatim echo)
-    instructions=_COORD_STATIC, retries=2,  # TODO(B2): observability via capabilities=[Instrumentation(...)] + Logfire
+    instructions=_COORD_STATIC, retries=2,  # TODO: observability via capabilities=[Instrumentation(...)] + Logfire
 )
 
 
@@ -314,7 +314,7 @@ def _irr_instructions(ctx: RunContext[IrrDeps]) -> str:
     return render_irrigation_context(ctx.deps)
 
 
-# phase 15: retrieved reference material, as a SEPARATE instruction block.
+# Retrieved reference material, as a SEPARATE instruction block.
 #
 # Separate rather than concatenated into the context above, and the separation is
 # the safeguard. `render_irrigation_context` is where the computed features live
@@ -392,7 +392,7 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 # NOTE: each run helper passes model=resolve_model() even though a test override(model=) wins —
 # pydantic-ai 1.107 raises UserError under an override if NEITHER agent.model nor a run-time
 # model is set, and the agents are built with no model so import needs no API key.
-# resolve_model() is phase 14's gateway seam: config.MODEL when no gateway is configured,
+# resolve_model() is the gateway seam: config.MODEL when no gateway is configured,
 # a metered (and optionally failover-wrapped) Model when one is. The agents never learn which.
 
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
@@ -434,7 +434,7 @@ def needs_reconciliation(conflict_facts: list[str], dq: DataQuality) -> bool:
     caveat that has to be reflected in the summary and the overall confidence, and
     writing that well is the one thing the model is better at than a template.
 
-    Same shape as phase 8's routing decision, one layer up: made from computed
+    Same shape as the irrigation router's decision, one layer up: made from computed
     features before any model is called, and it only ever *removes* a call.
     """
     return bool(conflict_facts) or dq.confidence_penalty > 0
@@ -491,7 +491,7 @@ async def run_coordinator_agent(
     if not needs_reconciliation(conflict_facts, dq):
         # Nothing to reconcile: the two legs do not interact tonight and the data
         # is clean. The coordinator's whole job is resolving interactions, so with
-        # none to resolve its output is a restatement -- and phase 8's router
+        # none to resolve its output is a restatement -- and the router
         # already established the principle: a model call that cannot change the
         # answer should not be made.
         return _reconcile_deterministically(irrigation, spray, dq, target_date)

@@ -1,8 +1,8 @@
 """Is a gateway configured? Everything else in this package branches on the answer.
 
-The default is *no gateway*, and that default is load-bearing: `uv run vinea`
-on a laptop with an `ANTHROPIC_API_KEY` must behave exactly as it did in phase
-13, with no proxy, no extra hop, and no new failure mode. A gateway appears only
+The default is *no gateway*, and that default is load-bearing: `uv run vinea` on a
+laptop with an `ANTHROPIC_API_KEY` must behave exactly as it would if this module
+did not exist -- no proxy, no extra hop, no new failure mode. A gateway appears only
 when someone sets `VINEA_GATEWAY_URL`, and it disappears the moment they unset it.
 
 Read from the environment on every call rather than captured at import. That is

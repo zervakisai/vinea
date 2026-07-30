@@ -1,7 +1,7 @@
 """An in-process TTL cache that serves stale-while-revalidate.
 
 The registry must never sit on the hot path of a single advisory run
-(DESIGN.md B3). A slow or momentarily-down registry should add latency to the
+A slow or momentarily-down registry should add latency to the
 *next* refresh, not to the request in front of a grower. So a fetched template
 is cached with a short TTL, and past that TTL it is served *stale* while a
 refresh happens in the background -- the grower's request gets yesterday's

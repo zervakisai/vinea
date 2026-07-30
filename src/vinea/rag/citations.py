@@ -1,6 +1,6 @@
 """What retrieval put in front of the model during one advisory run.
 
-The same shape as phase 14's cost ledger, and reused for the same reason: the
+The same shape as the cost ledger, and reused for the same reason: the
 thing worth recording is produced deep inside a run, by code the graph does not
 know about, and has to be readable synchronously the moment the run ends so the
 worker can write it in the same transaction as the advisory.
@@ -10,8 +10,7 @@ inherit the same list by reference — the trick `capture_run_messages` uses.
 
 What is recorded is deliberately narrow: the passages the retriever **supplied**,
 per leg, in rank order. Not the passages the model says it used. A model's claim
-about its own sources is a self-report, and phase 12 exists because self-report
-is not evidence.
+about its own sources is a self-report, and self-report is not evidence.
 """
 
 from __future__ import annotations

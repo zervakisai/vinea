@@ -6,7 +6,7 @@ persist one `eval_runs` row per evaluator -- each carrying the five drift tags
 (golden.py) so a moved score is attributable.
 
 The rows link to `prompt_version` (and the rest of the five tags), which is the
-governance hook (B3-4): staging→production promotion gates on an eval pass here plus
+governance hook: staging→production promotion gates on an eval pass here plus
 a human approver.
 """
 
@@ -62,7 +62,7 @@ def write_eval_run(
 ) -> EvalRun:
     """Persist one evaluator's result as an eval_runs row. Does not commit.
 
-    All five drift tags are NOT NULL on the row (phase 6) -- an untagged score isn't
+    All five drift tags are NOT NULL on the row -- an untagged score isn't
     evidence -- so a moved score later is always attributable to whichever of the
     five moved with it.
     """
@@ -87,7 +87,7 @@ def write_eval_run(
 def asymmetric_result(score: AsymmetricScore) -> EvalResult:
     """Adapt an AsymmetricScore into an EvalResult row-shape.
 
-    The recall gate is the pass condition (B2): a run passes only if recall on
+    The recall gate is the pass condition: a run passes only if recall on
     'should irrigate' clears the gate, regardless of how good the weighted cost looks.
     """
     return EvalResult(
@@ -132,7 +132,7 @@ def _results_from_report(report: EvaluationReport) -> list[EvalResult]:
     invalid_windows = [_metric(c, INVALID_WINDOWS) for c in cases]
     costs = [_metric(c, ASYMMETRIC_COST) for c in cases]
 
-    # Recall over the should-irrigate cases only -- the gated number (B2).
+    # Recall over the should-irrigate cases only -- the gated number.
     should = [c for c in cases if _metric(c, ORACLE_SHOULD)]
     if should:
         caught = sum(1 for c in should if _metric(c, IRRIGATION_CORRECT))

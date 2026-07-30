@@ -1,6 +1,6 @@
 """Prompt management: templates in a registry, numbers in deps.
 
-DESIGN.md B3. The instruction *framings* in `agents.py` (the `render_*_context`
+The instruction *framings* in `agents.py` (the `render_*_context`
 functions) are product copy owned by agronomists, who iterate on wording faster
 than anyone wants to cut a deploy. So the templates live outside the deploy
 artifact, in a registry (self-hosted Langfuse, ADR-004), fetched by `name@label`

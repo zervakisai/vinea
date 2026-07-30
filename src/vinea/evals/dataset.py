@@ -1,6 +1,6 @@
 """The pydantic-evals surface: the oracles, wrapped as Dataset evaluators.
 
-DESIGN.md B2 / S7's eval gate. `oracles.py` and `asymmetric.py` hold the *scoring
+The eval gate. `oracles.py` and `asymmetric.py` hold the *scoring
 logic* -- pure functions over `features.py`. This module is the thin adapter that
 exposes that logic to `pydantic_evals`: three `Evaluator` subclasses and a
 `build_advisory_dataset` that assembles them into a `Dataset` scoring a
@@ -84,7 +84,7 @@ class AsymmetricCostEvaluator(Evaluator[AdvisoryInputs, DailyFarmAdvisory, None]
 
     The physics (did we get the depletion right) is the WaterBalanceEvaluator's job;
     this one scores the *decision* and how much getting it wrong costs a grower. The
-    two are kept separate on purpose (B2): the water balance is physics and doesn't
+    two are kept separate on purpose: the water balance is physics and doesn't
     know the price of a mistake.
     """
 

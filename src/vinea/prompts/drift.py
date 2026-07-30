@@ -1,4 +1,4 @@
-"""S7.3 -- the CI drift check: bundled default vs. live production.
+"""The CI drift check: bundled default vs. live production.
 
 The bundled default is the fail-open floor (defaults.py): when the registry is
 down, it's what the system runs. That's only safe if the floor stays close to

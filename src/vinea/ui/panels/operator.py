@@ -1,7 +1,7 @@
-"""S6.3 -- the operator overview: queue depth over time, and nightly counts.
+"""The operator overview: queue depth over time, nightly counts, and the SLOs.
 
-The panel that makes "autoscale on queue depth" (DESIGN.md B1) a thing you can look
-at: a chart of queued/running/failed over time, drawn from the samples S3.4 stored.
+The panel that makes "autoscale on queue depth" a thing you can look at: a chart of
+queued/running/failed over time, drawn from the samples the worker stores.
 All from the ops endpoints; the panel never touches the queue table directly.
 """
 

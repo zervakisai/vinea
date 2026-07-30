@@ -10,7 +10,7 @@ Frozen + slots: immutable deps are safe to share across concurrent async runs (t
 and act as a single source of truth, so the number Python computes with and the number the
 LLM sees can never drift apart.
 
-In phase 3 this object is passed via `Agent(deps_type=Deps)` / `graph.run(..., deps=...)` and
+This object is passed via `Agent(deps_type=Deps)` / `graph.run(..., deps=...)` and
 read through `RunContext[Deps].deps` / `GraphRunContext.deps`.
 """
 
@@ -55,4 +55,4 @@ WINE_GRAPES = Deps()
 
 # TODO: a new crop/region is a ONE-OBJECT change — no code/prompt edits. e.g.:
 #   TABLE_GRAPES = Deps(crop="table grapes", kc=0.85, root_depth_m=1.0)
-# TODO: in production, load a CropConfig from a registry/YAML by (crop, region) — phase 12.
+# TODO: in production, load a CropConfig from a registry/YAML by (crop, region).

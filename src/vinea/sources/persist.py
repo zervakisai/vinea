@@ -1,6 +1,6 @@
 """Persisting fetched observations, idempotently.
 
-phase 7 / S2.3: when a source is a live API, the rows it returns are worth keeping --
+When a source is a live API, the rows it returns are worth keeping --
 they're the append-only ground truth ADR-001 is about, and re-fetching them
 tomorrow won't reproduce today's forecast. So `--source api` can write into
 `weather_observations`.

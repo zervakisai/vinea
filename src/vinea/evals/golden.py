@@ -1,6 +1,6 @@
-"""S7.5 -- golden replay and the five drift tags.
+"""Golden replay and the five drift tags.
 
-DESIGN.md B2: drift is two questions kept separate -- did the *model* change, or did
+Drift is two questions kept separate -- did the *model* change, or did
 the *input distribution* change? A golden replay answers the first by holding the
 second constant: the same frozen inputs (this repo's `data/` fixtures) run against
 whatever's currently deployed. If the score moves and the inputs didn't, the model
@@ -41,7 +41,7 @@ _DATA = _REPO_ROOT / "data"
 
 @dataclass(frozen=True)
 class DriftTags:
-    """The five tags that make a moved eval score attributable (B2)."""
+    """The five tags that make a moved eval score attributable."""
 
     prompt_version: str
     model_id: str

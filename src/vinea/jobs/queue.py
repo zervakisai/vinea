@@ -2,7 +2,7 @@
 
 This module is to `advisory_tasks` what `repository.py` is to `advisories` -- the
 only place the rest of the system touches the table. It holds the two pieces of
-real concurrency logic in phase 8: the SKIP LOCKED claim, and the one-owner retry
+real concurrency logic: the SKIP LOCKED claim, and the one-owner retry
 decision.
 
 Transactions: unlike `repository.py`, a few functions here commit, because a
@@ -27,7 +27,7 @@ BACKOFF_BASE_SECONDS = 60
 BACKOFF_CAP_SECONDS = 3600
 
 # How long a whole day's advisory may take across all its worker attempts, from
-# first enqueue. ONE deadline, never extended (S3.3).
+# first enqueue. ONE deadline, never extended.
 DEFAULT_DEADLINE_SECONDS = 1800
 
 
@@ -85,7 +85,7 @@ def enqueue(
 def claim_one(session: Session, *, worker_id: str) -> AdvisoryTask | None:
     """Claim the next runnable task, or return None. Commits.
 
-    This is the SKIP LOCKED heart of S3.1. The query:
+    The SKIP LOCKED heart of the queue. The query:
 
         SELECT ... FROM advisory_tasks
         WHERE status = 'queued' AND run_after <= now()
@@ -148,7 +148,7 @@ def mark_done(session: Session, task: AdvisoryTask, *, advisory_id: int) -> None
 def mark_failed_or_retry(session: Session, task: AdvisoryTask, *, error: str) -> str:
     """One owner of retry. Decide give-up vs backoff-re-enqueue. Commits.
 
-    This is the S3.3 footgun made into a single function so there is exactly ONE
+    The double-retry footgun, made into a single function so there is exactly ONE
     place that decides a *worker-level* retry. pydantic-ai's Agent owns its own
     network/validation retries (ModelRetry, with jitter); this layer must never
     wrap those in a second retry loop, or a single bad day fans out to attempts x

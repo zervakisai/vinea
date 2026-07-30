@@ -1,6 +1,6 @@
 """Deterministic oracles: the SAME functions features.py has, wrapped for scoring.
 
-DESIGN.md B2: the scoring half of observability shouldn't be an LLM judging an LLM,
+The scoring half of observability shouldn't be an LLM judging an LLM,
 not for the legs that have a correct numerical answer. So these oracles call
 `features.build_irrigation_features` and `features.spray_features_for_tomorrow`
 directly -- the exact code the deterministic core runs -- and compare the model's
@@ -12,10 +12,10 @@ the reimplementation would make a correct model look wrong (or vice versa), and
 you'd be scoring the model against a second, subtly-different physics. Wrapping the
 real function means the oracle and production agree by construction.
 
-The two roles this code plays are kept separate on purpose (B2's circularity trap):
+The two roles this code plays are kept separate on purpose -- the circularity trap:
 the output_validator in agents.py uses the same *facts* inline to force a retry;
 these evaluators use them async, over historical runs, to score -- and they score
-the pre-correction attempt (S4.4), not the shipped output.
+the pre-correction attempt, not the shipped output.
 """
 
 from __future__ import annotations
