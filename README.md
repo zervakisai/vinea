@@ -94,16 +94,63 @@ the coordinator to sequence.
 ## Architecture
 
 ```mermaid
-stateDiagram-v2
-  [*] --> FeatureBuilderNode
-  FeatureBuilderNode --> IrrigationNode
-  IrrigationNode --> SprayNode
-  SprayNode --> CoordinatorNode
-  CoordinatorNode --> [*]
-```
+flowchart TB
+    W(["<code>load_weather</code> — I/O at the edge"])
 
-`load_weather` (I/O at the edge) → **`FeatureBuilderNode`, deterministic, no model**
-→ `IrrigationNode` → `SprayNode` → `CoordinatorNode` → `DailyFarmAdvisory`.
+    subgraph PY["⚙️ &nbsp; DETERMINISTIC &nbsp;·&nbsp; every number is computed here"]
+        FeatureBuilderNode["<b>FeatureBuilderNode</b> &nbsp;—&nbsp; <i>no model in the call path</i><br/>FAO-56 water balance · ETc = ET₀ × Kc, clamped to [0, TAW]<br/>Delta-T &amp; wind bands → spray-window candidates"]
+    end
+
+    subgraph AI["🧠 &nbsp; PYDANTIC-GRAPH &nbsp;·&nbsp; judges and explains — never calculates"]
+        direction LR
+        IrrigationNode["<b>IrrigationNode</b><br/>irrigate, or hold?"]
+        SprayNode["<b>SprayNode</b><br/>which window?"]
+        CoordinatorNode["<b>CoordinatorNode</b><br/>reconciles and sequences<br/><i>skipped when the legs don't interact</i>"]
+    end
+
+    V{"<b>output<br/>validators</b>"}
+    R["depletion echoed <b>verbatim</b><br/>windows ⊆ deterministic candidates<br/>confidence ≤ its weakest leg<br/><i>an oracle recomputes it nightly</i>"]
+    OUT(["<b>DailyFarmAdvisory</b>"])
+    BLK["🚫 <b>blocked</b><br/><i>never ships</i>"]
+    INJ["☠️ injected<br/>instruction"]
+
+    W --> FeatureBuilderNode
+    FeatureBuilderNode --> IrrigationNode
+    IrrigationNode --> SprayNode
+    SprayNode --> CoordinatorNode
+    CoordinatorNode ==> V
+    V -.- R
+    V ==>|"holds to the numbers"| OUT
+    V -->|"a quantity the model invented"| BLK
+    INJ -.->|"reaches the words…"| AI
+    INJ -.-x|"…never the arithmetic"| PY
+
+    classDef det fill:#0d2a1a,stroke:#3fb950,stroke-width:2px,color:#e6edf3
+    classDef llm fill:#10233d,stroke:#58a6ff,stroke-width:2px,color:#e6edf3
+    classDef gate fill:#3d2f00,stroke:#d29922,stroke-width:2px,color:#f0d58c
+    classDef rules fill:#161b22,stroke:#d29922,stroke-width:1px,color:#c9d1d9
+    classDef good fill:#0d2a1a,stroke:#3fb950,stroke-width:3px,color:#7ee2a8
+    classDef bad fill:#3d1418,stroke:#f85149,stroke-width:2px,color:#ffa198
+    classDef src fill:#161b22,stroke:#8b949e,stroke-width:1px,color:#c9d1d9
+
+    class FeatureBuilderNode det
+    class IrrigationNode,SprayNode,CoordinatorNode llm
+    class V gate
+    class R rules
+    class OUT good
+    class BLK,INJ bad
+    class W src
+
+    style PY fill:#07160f,stroke:#3fb950,stroke-width:2px,color:#7ee2a8
+    style AI fill:#0a1626,stroke:#58a6ff,stroke-width:2px,color:#79c0ff
+
+    linkStyle 1 stroke:#3fb950,stroke-width:3px
+    linkStyle 5 stroke:#d29922,stroke-width:1px
+    linkStyle 6 stroke:#3fb950,stroke-width:3px
+    linkStyle 7 stroke:#f85149,stroke-width:1.5px
+    linkStyle 8 stroke:#f85149,stroke-width:1.5px
+    linkStyle 9 stroke:#f85149,stroke-width:2.5px
+```
 
 The topology *is* the boundary. Crop parameters arrive as an injected `Deps`, so a
 new crop or region is a configuration row rather than a code change. The coordinator
