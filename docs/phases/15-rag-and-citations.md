@@ -7,6 +7,28 @@
 > including a correction to a claim in the decision table that turned out to be
 > right for the wrong reason, and briefly looked wrong for a better one.
 
+> ## ⚠ Reversed later — [ADR-011](../adr/011-lexical-retrieval-only.md)
+>
+> **The hybrid retrieval this phase built has been removed.** The recall@3 = 1.00
+> celebrated below was measured against twelve questions written alongside the
+> chunker, in FAO-56's own vocabulary. Fifteen questions phrased the way a grower
+> asks them gave:
+>
+> | retriever | original 12 | paraphrase 15 | all 27 |
+> |---|---|---|---|
+> | hybrid | 1.00 | 0.47 | 0.70 |
+> | dense only | 0.92 | 0.53 | 0.70 |
+> | **lexical only** | 0.92 | **0.67** | **0.78** |
+>
+> Lexical alone is *better*. The weak static embedder answered hard queries with
+> plausible-but-wrong passages that RRF ranked highly enough to displace correct
+> lexical hits. A larger embedder was measured too and bought one question out of
+> 27 for twice the vector width.
+>
+> The dense half is gone: no embedder, no vectors, 258 MB off the image. The
+> reasoning below is left intact because the *method* was right — build the gate,
+> then let it overturn you. It did, and the gate is what caught it.
+
 ## What you learn
 
 That the hard part of RAG in a system with a deterministic core is not retrieval

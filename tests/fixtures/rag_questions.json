@@ -1,6 +1,6 @@
 {
   "_comment": [
-    "Labelled retrieval questions for the recall gate (phase 15).",
+    "Labelled retrieval questions for the recall gate.",
     "",
     "Ground truth is a CHAPTER, not a chunk id. Chunk ids are assigned in file",
     "order by scripts/fetch_corpus.py, so they change whenever the chunker or the",
@@ -9,86 +9,252 @@
     "cries wolf gets deleted, so this one is labelled at a granularity that",
     "survives re-chunking.",
     "",
-    "These are authored questions, not invented data: the corpus is FAO's and",
-    "untouched. This is the same kind of artefact as phase 12's golden cases -- a",
-    "human saying what a right answer looks like.",
+    "Two sets. The first twelve are phrased in the document's own vocabulary and",
+    "were written alongside the chunker -- which is exactly why they were too easy:",
+    "recall@3 was 1.00, and a gate that never moves has stopped measuring.",
     "",
-    "'chapters' lists every chapter that would be an acceptable hit. Several",
-    "questions legitimately have two, because FAO-56 splits single/dual crop",
-    "coefficient treatment across chapters 6 and 7."
+    "The fifteen marked 'paraphrase' ask the same questions the way a grower or an",
+    "agronomist would, avoiding the manual's terms. They are the harder half and",
+    "they are where a chunking regression will show first.",
+    "",
+    "These are authored questions, not invented data: the corpus is FAO's and",
+    "untouched. Same kind of artefact as the golden eval cases -- a human saying",
+    "what a right answer looks like."
   ],
   "questions": [
     {
       "id": "raw-mad",
       "query": "readily available water RAW and the management allowed depletion fraction p",
-      "chapters": [8],
+      "chapters": [
+        8
+      ],
       "why": "The irrigation trigger this system computes. Chapter 8 defines RAW = p x TAW."
     },
     {
       "id": "taw-root-zone",
       "query": "total available water from field capacity wilting point and rooting depth",
-      "chapters": [8],
+      "chapters": [
+        8
+      ],
       "why": "TAW is the ceiling the running water balance is clamped to."
     },
     {
       "id": "kc-midseason",
       "query": "crop coefficient Kc mid-season stage for vines and fruit trees",
-      "chapters": [6, 7],
+      "chapters": [
+        6,
+        7
+      ],
       "why": "Deps.kc's source. The passage explains it; Deps still supplies the number."
     },
     {
       "id": "etc-equation",
       "query": "crop evapotranspiration ETc equals ETo multiplied by the crop coefficient",
-      "chapters": [5, 6],
+      "chapters": [
+        5,
+        6
+      ],
       "why": "The single line features.py implements."
     },
     {
       "id": "penman-monteith",
       "query": "FAO Penman-Monteith equation for reference evapotranspiration ETo",
-      "chapters": [2],
+      "chapters": [
+        2
+      ],
       "why": "Where the ET0 column in the weather feed comes from."
     },
     {
       "id": "wind-speed",
       "query": "wind speed measurement height two metres and adjustment for evapotranspiration",
-      "chapters": [3],
+      "chapters": [
+        3
+      ],
       "why": "The spray gate reasons about wind; the ETo calculation depends on it."
     },
     {
       "id": "dew-point-humidity",
       "query": "dew point temperature relative humidity and vapour pressure deficit",
-      "chapters": [3],
+      "chapters": [
+        3
+      ],
       "why": "Delta-T is reconstructed from temperature and wet bulb; same chapter."
     },
     {
       "id": "water-stress",
       "query": "water stress coefficient Ks when root zone depletion exceeds RAW",
-      "chapters": [8],
+      "chapters": [
+        8
+      ],
       "why": "What happens past the trigger the advisory recommends acting on."
     },
     {
       "id": "irrigation-scheduling",
       "query": "irrigation scheduling to avoid crop water stress and depth of water to apply",
-      "chapters": [8],
+      "chapters": [
+        8
+      ],
       "why": "The advisory's recommended_depth_mm, in the document's own terms."
     },
     {
       "id": "soil-evaporation",
       "query": "evaporation from bare soil after a wetting event and the evaporation coefficient Ke",
-      "chapters": [7],
+      "chapters": [
+        7
+      ],
       "why": "The dual-coefficient half this system deliberately does not model."
     },
     {
       "id": "effective-rain",
       "query": "how much rainfall infiltrates the root zone and how much is lost to runoff",
-      "chapters": [8],
+      "chapters": [
+        8
+      ],
       "why": "effective_rain_fraction's justification."
     },
     {
       "id": "growth-stages",
       "query": "crop growth stages initial development mid-season and late season lengths",
-      "chapters": [6],
+      "chapters": [
+        6
+      ],
       "why": "Which Kc applies when -- the config decision a grower actually makes."
+    },
+    {
+      "id": "p-when-to-water",
+      "query": "how do I know when the vines actually need watering",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "The grower's phrasing of the RAW/MAD trigger. No manual vocabulary at all."
+    },
+    {
+      "id": "p-how-much-water",
+      "query": "how much water should I put on to refill the soil",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "recommended_depth_mm, asked as a person would."
+    },
+    {
+      "id": "p-soil-holds",
+      "query": "how much water can this soil hold for the plants to use",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "TAW without saying TAW."
+    },
+    {
+      "id": "p-thirsty-plants",
+      "query": "what happens to the crop when the soil dries out too far",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "The stress coefficient Ks, phrased as a consequence."
+    },
+    {
+      "id": "p-rain-counts",
+      "query": "after a shower how much of that rain do the roots really get",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "Effective rainfall, runoff and deep percolation."
+    },
+    {
+      "id": "p-water-use",
+      "query": "how much water does a vineyard use on a hot day",
+      "chapters": [
+        5,
+        6
+      ],
+      "style": "paraphrase",
+      "why": "ETc = ETo x Kc, asked as a quantity."
+    },
+    {
+      "id": "p-grass-reference",
+      "query": "what does the standard grass reference number from the weather service mean",
+      "chapters": [
+        2
+      ],
+      "style": "paraphrase",
+      "why": "ETo and Penman-Monteith, from the consumer's side."
+    },
+    {
+      "id": "p-crop-stage",
+      "query": "does a young vine use the same amount of water as a mature one in summer",
+      "chapters": [
+        6
+      ],
+      "style": "paraphrase",
+      "why": "Growth stages and the Kc curve."
+    },
+    {
+      "id": "p-windy-day",
+      "query": "why does a windy day dry the field out faster",
+      "chapters": [
+        3
+      ],
+      "style": "paraphrase",
+      "why": "Wind in the ETo calculation, asked causally."
+    },
+    {
+      "id": "p-humid-day",
+      "query": "why does the same temperature feel different for evaporation when the air is humid",
+      "chapters": [
+        3
+      ],
+      "style": "paraphrase",
+      "why": "Vapour pressure deficit without the term."
+    },
+    {
+      "id": "p-bare-soil",
+      "query": "does water evaporate from the ground itself or only through the leaves",
+      "chapters": [
+        7
+      ],
+      "style": "paraphrase",
+      "why": "The dual coefficient: Kcb versus Ke."
+    },
+    {
+      "id": "p-drip-vs-furrow",
+      "query": "does it matter whether I use drip or flood the rows",
+      "chapters": [
+        7
+      ],
+      "style": "paraphrase",
+      "why": "Wetted fraction and the evaporation component."
+    },
+    {
+      "id": "p-salty-water",
+      "query": "my irrigation water is a bit salty, does that change how much I should apply",
+      "chapters": [
+        8
+      ],
+      "style": "paraphrase",
+      "why": "Salinity stress, which shares Chapter 8 with water stress."
+    },
+    {
+      "id": "p-shade-cloth",
+      "query": "what if the vines only cover part of the ground between the rows",
+      "chapters": [
+        9
+      ],
+      "style": "paraphrase",
+      "why": "Sparse vegetation and partial ground cover."
+    },
+    {
+      "id": "p-missing-sensor",
+      "query": "my weather station lost a day of readings, can I still work out the numbers",
+      "chapters": [
+        3
+      ],
+      "style": "paraphrase",
+      "why": "Estimating missing meteorological data."
     }
   ]
 }

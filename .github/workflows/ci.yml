@@ -108,7 +108,7 @@ jobs:
       - name: pip-audit (what the app image installs)
         run: |
           uv export --no-dev --no-emit-project --no-hashes \
-            --extra anthropic --extra gateway --extra rag \
+            --extra anthropic --extra gateway \
             --format requirements-txt > /tmp/app.txt
           uvx pip-audit -r /tmp/app.txt --progress-spinner off
 

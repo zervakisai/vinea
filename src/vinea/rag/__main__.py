@@ -22,7 +22,6 @@ from sqlmodel import Session
 
 from vinea.db.session import make_engine
 from vinea.rag.corpus import load_corpus, load_source
-from vinea.rag.embedding import get_embedder
 from vinea.rag.retrieve import SOURCE
 from vinea.rag.store import ingest, search
 
@@ -45,26 +44,23 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "ingest":
         source_record = load_source()
         chunks = load_corpus()
-        embedder = get_embedder()
         print(f"corpus  : {source_record.title} ({source_record.issued}), {source_record.licence}")
         print(f"chunks  : {len(chunks)}")
-        print(f"embedder: {getattr(embedder, 'model_name', 'unknown')}")
         with Session(engine) as session:
-            written = ingest(session, chunks, source=args.source, embedder=embedder)
+            written = ingest(session, chunks, source=args.source)
             # The caller owns the transaction everywhere else in this codebase;
             # here the caller IS the command, so this is where the commit belongs.
             session.commit()
         print(f"ingested: {written} rows into corpus_chunks (source={args.source!r})")
         return 0
 
-    embedder = get_embedder()
     with Session(engine) as session:
-        hits = search(session, args.query, embedder=embedder, source=args.source, top_k=args.top_k)
+        hits = search(session, args.query, source=args.source, top_k=args.top_k)
     if not hits:
         print("no results. Has the corpus been ingested? `python -m vinea.rag ingest`")
         return 1
     for rank, hit in enumerate(hits, start=1):
-        print(f"\n[{rank}] rrf={hit.score:.5f}  {hit.locator}")
+        print(f"\n[{rank}] rank={hit.score:.5f}  {hit.locator}")
         print(f"    {hit.text[:220]}...")
     return 0
 

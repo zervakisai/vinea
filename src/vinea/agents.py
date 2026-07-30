@@ -29,6 +29,7 @@ from .gateway import resolve_model
 from .ingest import DataQuality
 from .prompts import defaults
 from .prompts import registry as prompts
+from .rag.queries import irrigation_query, spray_query
 from .rag.retrieve import render_passages, retrieve_for
 from .security import bound_text
 
@@ -394,31 +395,11 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 # resolve_model() is phase 14's gateway seam: config.MODEL when no gateway is configured,
 # a metered (and optionally failover-wrapped) Model when one is. The agents never learn which.
 
-# The retrieval queries, phrased in FAO-56's own vocabulary rather than a
-# grower's. The lexical half of the hybrid matches tokens, and "readily available
-# water" and "management allowed depletion" are the terms the document indexes on
-# -- "should I water tomorrow" retrieves nothing useful from a technical manual.
-#
-# Static strings, not built from the features. Interpolating tonight's depletion
-# into the query would make retrieval vary per tenant per night for no gain, and
-# would quietly turn a cacheable lookup into 365 distinct ones.
-_IRR_QUERY = (
-    "soil water balance root zone depletion, total available water TAW, "
-    "readily available water RAW, management allowed depletion fraction, "
-    "crop coefficient Kc and irrigation scheduling to avoid crop water stress"
-)
-_SPRAY_QUERY = (
-    "wind speed measurement and effect on evaporation, humidity and vapour "
-    "pressure deficit, temperature and dew point, weather conditions affecting "
-    "field operations and spray droplet evaporation"
-)
-
-
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
     # Retrieval is strictly downstream of the features -- they are already
     # computed and passed in. Nothing retrieved can reach build_features, which is
     # the phase-15 invariant expressed as call order rather than as a comment.
-    passages = retrieve_for("irrigation", _IRR_QUERY)
+    passages = retrieve_for("irrigation", irrigation_query(features))
     deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date, passages=passages)
     res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=resolve_model())
     out = res.output
@@ -430,7 +411,7 @@ async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: Dat
 
 
 async def run_spray_agent(crop: Deps, features: SprayFeatures, dq: DataQuality, target_date: date, run_date: date) -> SprayAdvice:
-    passages = retrieve_for("spray", _SPRAY_QUERY)
+    passages = retrieve_for("spray", spray_query(features))
     deps = SprayDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date, passages=passages)
     res = await spray_agent.run(render_spray_input(features), deps=deps, model=resolve_model())
     out = res.output
@@ -441,6 +422,63 @@ async def run_spray_agent(crop: Deps, features: SprayFeatures, dq: DataQuality, 
     })
 
 
+def needs_reconciliation(conflict_facts: list[str], dq: DataQuality) -> bool:
+    """Is there anything for the coordinator to actually reconcile?
+
+    `build_conflict_facts` is deterministic and returns the cross-domain
+    interactions for the night: irrigating into a spray window, rain arriving
+    before a treatment is rain-fast, and so on. An empty list means the two legs
+    are independent today.
+
+    Data quality is the second condition. A penalty means every leg carries a
+    caveat that has to be reflected in the summary and the overall confidence, and
+    writing that well is the one thing the model is better at than a template.
+
+    Same shape as phase 8's routing decision, one layer up: made from computed
+    features before any model is called, and it only ever *removes* a call.
+    """
+    return bool(conflict_facts) or dq.confidence_penalty > 0
+
+
+def _reconcile_deterministically(
+    irrigation: IrrigationAdvice, spray: SprayAdvice, dq: DataQuality, target_date: date
+) -> DailyFarmAdvisory:
+    """Assemble the advisory without a model, for a night with no interactions.
+
+    The summary is built from the two legs' own decisions rather than generated.
+    It is plainer than the model's prose -- shorter sentences, no hedging -- and
+    it cannot contradict the legs, because it is derived from them.
+
+    `conflicts_resolved` stays empty and that is the honest value: nothing was
+    resolved because nothing conflicted. Filling it with "no conflicts found"
+    would turn an absence into a claim.
+    """
+    depth = irrigation.recommended_depth_mm
+    if irrigation.should_irrigate_tomorrow and depth:
+        water = f"Irrigate {depth:.0f} mm."
+    elif irrigation.should_irrigate_tomorrow:
+        water = "Irrigate."
+    else:
+        water = "No irrigation needed."
+
+    if spray.can_spray_tomorrow and spray.recommended_windows:
+        first = spray.recommended_windows[0]
+        treat = f"Spray between {first.start:%H:%M} and {first.end:%H:%M}."
+    elif spray.can_spray_tomorrow:
+        treat = "Conditions allow spraying."
+    else:
+        reason = spray.limiting_factors[0] if spray.limiting_factors else "conditions unsuitable"
+        treat = f"Do not spray: {reason}."
+
+    conf, caveat = _degrade(min(irrigation.confidence, spray.confidence), dq)
+    return DailyFarmAdvisory(
+        date=target_date, irrigation=irrigation, spray=spray,
+        summary=f"{water} {treat}" + (f"\n[caveat — {caveat}]" if caveat else ""),
+        conflicts_resolved=[caveat] if caveat else [],
+        overall_confidence=round(conf, 3),
+    )
+
+
 async def run_coordinator_agent(
     crop: Deps, irrigation: IrrigationAdvice, spray: SprayAdvice,
     conflict_facts: list[str], dq: DataQuality, target_date: date, run_date: date,
@@ -449,6 +487,15 @@ async def run_coordinator_agent(
         crop=crop, irrigation=irrigation, spray=spray,
         conflict_facts=conflict_facts, data_quality=dq, target_date=target_date, run_date=run_date,
     )
+
+    if not needs_reconciliation(conflict_facts, dq):
+        # Nothing to reconcile: the two legs do not interact tonight and the data
+        # is clean. The coordinator's whole job is resolving interactions, so with
+        # none to resolve its output is a restatement -- and phase 8's router
+        # already established the principle: a model call that cannot change the
+        # answer should not be made.
+        return _reconcile_deterministically(irrigation, spray, dq, target_date)
+
     res = await coordinator_agent.run(render_coordinator_input(deps), deps=deps, model=resolve_model())
     rec = res.output  # Reconciliation
     conf, caveat = _degrade(rec.overall_confidence, dq)

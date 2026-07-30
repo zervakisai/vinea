@@ -1,6 +1,7 @@
 # ADR-008: pgvector in the database we already run, and hybrid retrieval
 
-- **Status:** accepted
+- **Status:** **partially superseded by [ADR-011](011-lexical-retrieval-only.md).** The hybrid decision was reversed on 2026-07-30: lexical retrieval alone scored 0.78 recall@3 against the hybrid's 0.70 once the question set included fifteen questions phrased the way a grower asks them. The twelve questions this ADR measured against were written alongside the chunker in the document's own vocabulary, and were too easy. Everything else here — pgvector over a vector database, RRF over weighted blending, citations as provenance, no ANN index — still holds as reasoning and is now moot in practice.
+- **Status (original):** accepted
 - **Date:** 2026-07-29
 - **Milestone:** phase 15 (retrieval & citations)
 

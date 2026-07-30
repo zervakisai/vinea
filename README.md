@@ -265,9 +265,10 @@ Five ADRs record the calls that were genuinely arguable:
 | [005](docs/adr/005-streamlit-not-react.md) | Streamlit, not React |
 | [006](docs/adr/006-kubernetes-on-demand.md) | Kubernetes, provider-agnostic and on demand |
 | [007](docs/adr/007-self-hosted-gateway-exact-cache.md) | A self-hosted LLM gateway, exact-match cache |
-| [008](docs/adr/008-pgvector-not-a-vector-database.md) | pgvector, not a vector database; hybrid retrieval |
+| [008](docs/adr/008-pgvector-not-a-vector-database.md) | pgvector, not a vector database (hybrid half superseded by 011) |
 | [009](docs/adr/009-row-level-security.md) | Tenant isolation in the database, not in the queries |
 | [010](docs/adr/010-slos-in-sql.md) | SLOs measured in SQL; three debts settled honestly |
+| [011](docs/adr/011-lexical-retrieval-only.md) | Lexical retrieval only — reversing 008's hybrid |
 
 ## Layout
 
@@ -283,7 +284,7 @@ src/vinea/  config · ingest · deps · contracts · features        the determi
             prompts/    name@label registry, cache, drift check   phase 12
             evals/      oracles, asymmetric scoring, golden, judge phase 12
             gateway/    routing, ledger, budget refusals            phase 14
-            rag/        corpus, embedding, hybrid store, citations   phase 15
+            rag/        corpus, chunk store, queries, citations      phase 15
             context/    token accounting, the per-leg budget          phase 16
             security.py bounded free text (NOT an injection filter)  phase 17
             slo/        objectives, SLIs in SQL, error budgets        phase 18
@@ -293,11 +294,10 @@ scripts/    fetch_dataset.py — regenerates data/ from Open-Meteo
             fetch_corpus.py  — and data/corpus/ from FAO       phase 15
 Dockerfile  two targets: `app` (API + worker) and `ui`               phase 13
             --build-arg GATEWAY=1 adds the OpenAI-wire SDK (+30 MB)  phase 14
-            --build-arg RAG=1 bakes the embedding model (391→649 MB) phase 15
 infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh          phase 13
             chart/files/litellm-config.yaml — one file, two deploys  phase 14
             sealed-secrets/ · testing/ the throwaway Postgres
-docs/       adr/ · phases/ — the ten decisions and the eighteen lessons
+docs/       adr/ · phases/ — the eleven decisions and the eighteen lessons
             runbooks/ — one per alert, shipped with the alert   phase 18
 SECURITY.md the model, its limits, and what it deliberately omits phase 17
 migrations/ Alembic versions (the schema we actually ship)

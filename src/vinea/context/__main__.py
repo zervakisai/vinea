@@ -28,7 +28,7 @@ from vinea.ingest import load_weather
 
 
 def _legs(run_date: date) -> dict[str, dict[str, str]]:
-    from vinea.agents import _IRR_QUERY, _SPRAY_QUERY
+    from vinea.rag.queries import irrigation_query, spray_query
     from vinea.rag.retrieve import render_passages, retrieve_for
 
     data_dir = Path(config.DEFAULT_DATA_DIR)
@@ -50,13 +50,13 @@ def _legs(run_date: date) -> dict[str, dict[str, str]]:
             "static instructions": agents._IRR_STATIC,
             "context block": agents.render_irrigation_context(irr_deps),
             "user input": agents.render_irrigation_input(features.irrigation, features.target_date),
-            "retrieved passages": render_passages(retrieve_for("irrigation", _IRR_QUERY)),
+            "retrieved passages": render_passages(retrieve_for("irrigation", irrigation_query(features.irrigation))),
         },
         "spray": {
             "static instructions": agents._SPRAY_STATIC,
             "context block": agents.render_spray_context(spray_deps),
             "user input": agents.render_spray_input(features.spray),
-            "retrieved passages": render_passages(retrieve_for("spray", _SPRAY_QUERY)),
+            "retrieved passages": render_passages(retrieve_for("spray", spray_query(features.spray))),
         },
     }
 

@@ -49,7 +49,10 @@ from sqlalchemy import (
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlmodel import Field, SQLModel
 
-from vinea.rag.embedding import EMBEDDING_DIM
+# Width of the reserved `corpus_chunks.embedding` column. A constant rather than a
+# lookup: a migration cannot ask a model at runtime how wide its output is, so
+# changing embedder would be a schema change and should feel like one.
+EMBEDDING_DIM = 256
 
 
 def _utcnow_column(**kwargs: object) -> Column:
@@ -618,13 +621,16 @@ class CorpusChunk(SQLModel, table=True):
     locator: str = Field(sa_column=Column(Text, nullable=False))
     text_: str = Field(sa_column=Column("text", Text, nullable=False))
 
-    # Nullable: a chunk can be ingested before it is embedded, and an unembedded
-    # chunk is still lexically retrievable. Empty is honest; a zero vector would
-    # be a lie that sits at a fixed distance from every query.
+    # Reserved, and currently never written. ADR-008 built dense retrieval here;
+    # ADR-011 removed it after measuring that lexical search alone scored better
+    # (0.78 vs 0.70 recall@3) on questions phrased the way a grower asks them.
+    #
+    # The columns stay rather than being dropped because ADR-008's revisit trigger
+    # is specific and still stands: a corpus past roughly 10^5 chunks, or one
+    # spanning languages, is where vectors start to pay. Keeping them makes that
+    # an ingest away instead of a migration away, and a nullable unused column
+    # costs nothing but this comment.
     embedding: list[float] | None = Field(default=None, sa_column=Column(Vector(EMBEDDING_DIM)))
-    # Which embedder produced it. Change model, change vectors, and this is what
-    # tells you a mixed-embedder table is being queried -- the same job the five
-    # drift tags do for advisories.
     embedding_model: str | None = Field(default=None, sa_column=Column(Text))
 
     ingested_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))

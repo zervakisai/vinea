@@ -123,12 +123,10 @@ def retrieve_for(
     try:
         from sqlmodel import Session
 
-        from vinea.rag.embedding import get_embedder
         from vinea.rag.store import search
 
-        embedder = get_embedder()
         with Session(_engine()) as session:
-            hits = search(session, query, embedder=embedder, source=SOURCE, top_k=top_k)
+            hits = search(session, query, source=SOURCE, top_k=top_k)
     except Exception as exc:  # noqa: BLE001 -- the floor is silence, see the module docstring
         # Debug, not warning. On a laptop with no corpus ingested this is the
         # normal state, and a nightly WARNING that means "the optional thing is

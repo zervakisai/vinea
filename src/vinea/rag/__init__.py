@@ -31,21 +31,18 @@ into the advisory contract.
 
 from vinea.rag.citations import RetrievedPassage, citation_scope, current_citations
 from vinea.rag.corpus import Chunk, CorpusSource, load_corpus, load_source
-from vinea.rag.embedding import EMBEDDING_DIM, Embedder, HashEmbedder, StaticEmbedder, get_embedder
+from vinea.rag.queries import irrigation_query, spray_query
 from vinea.rag.retrieve import retrieve_for
 
 __all__ = [
-    "EMBEDDING_DIM",
     "Chunk",
     "CorpusSource",
-    "Embedder",
-    "HashEmbedder",
     "RetrievedPassage",
-    "StaticEmbedder",
     "citation_scope",
     "current_citations",
-    "get_embedder",
+    "irrigation_query",
     "load_corpus",
     "load_source",
     "retrieve_for",
+    "spray_query",
 ]

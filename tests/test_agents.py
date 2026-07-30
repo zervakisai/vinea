@@ -258,3 +258,75 @@ def test_readme_mermaid_matches_topology():
                  "IrrigationNode --> SprayNode",
                  "SprayNode --> CoordinatorNode"):
         assert edge in code and edge in readme
+
+
+# --- the coordinator is skipped when there is nothing to reconcile ------------
+
+
+def _clean_dq():
+    """A DataQuality with no penalty. `confidence_penalty` is computed, so the
+    inputs have to be spelled out rather than the result asserted."""
+    from vinea.ingest import DataQuality
+
+    return DataQuality(
+        rows_loaded=24, rows_dropped=0, gap_count=0, max_gap_hours=0, nan_cells=0,
+        spray_critical_nan_cells=0, is_stale=False, staleness_hours=1.0,
+        forecast_covers_tomorrow=True, notes=[],
+    )
+
+
+def test_no_conflicts_and_clean_data_needs_no_coordinator_call():
+    """A model call that cannot change the answer should not be made.
+
+    `build_conflict_facts` is deterministic: an empty list means the irrigation
+    and spray legs do not interact tonight. With clean data quality there is also
+    no caveat to weave in, so the coordinator's output would be a restatement of
+    two decisions already made -- at the cost of a third model call per advisory,
+    every night, for every tenant.
+
+    Same principle as phase 8's router, one layer up, and it only ever removes a
+    call: `needs_reconciliation` is computed from features before any model runs.
+    """
+    from vinea.agents import needs_reconciliation
+
+    assert needs_reconciliation([], _clean_dq()) is False
+    assert needs_reconciliation(["irrigation overlaps the morning spray window"], _clean_dq()) is True
+
+    degraded = _clean_dq().model_copy(update={"nan_cells": 3})
+    assert degraded.confidence_penalty > 0
+    assert needs_reconciliation([], degraded) is True, (
+        "a data-quality caveat has to reach the summary, and writing that well is "
+        "the one thing the model is better at than a template"
+    )
+
+
+def test_the_deterministic_summary_cannot_contradict_the_legs():
+    """It is derived from the two decisions rather than generated beside them.
+
+    The model's prose is better. This is plainer and *cannot* say "spray at 09:00"
+    when the spray leg refused, because it reads the refusal to build the
+    sentence.
+    """
+    import asyncio
+
+    from vinea.agents import run_coordinator_agent
+
+    f, irr, spr = _advices()
+    irr2 = irr.model_copy(update={"should_irrigate_tomorrow": True, "recommended_depth_mm": 42.0})
+    spr2 = spr.model_copy(
+        update={"can_spray_tomorrow": False, "recommended_windows": [], "limiting_factors": ["wind above 4.2 m/s"]}
+    )
+    # No override: if this reaches a model, ALLOW_MODEL_REQUESTS = False raises.
+    advisory = asyncio.run(
+        run_coordinator_agent(WINE_GRAPES, irr2, spr2, [], _clean_dq(), TOMORROW, RUN_DATE)
+    )
+
+    assert "Irrigate 42 mm" in advisory.summary
+    assert "Do not spray" in advisory.summary
+    assert "wind above 4.2 m/s" in advisory.summary
+    # Nothing was resolved because nothing conflicted. "No conflicts found" would
+    # turn an absence into a claim.
+    assert advisory.conflicts_resolved == []
+    # The legs are re-attached verbatim, exactly as on the model path.
+    assert advisory.irrigation is irr2
+    assert advisory.spray is spr2

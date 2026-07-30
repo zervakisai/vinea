@@ -16,8 +16,8 @@
 # Job and its logs behind for someone to read -- which matters precisely because
 # nothing else will page about it.
 #
-# The image must be built with `--build-arg RAG=1`; without model2vec this Job
-# exits non-zero with a clear message rather than silently ingesting nothing.
+# It runs the ordinary app image. Ingest writes rows and builds no vectors
+# (ADR-011), so there is no model to carry and nothing to download at 02:00.
 apiVersion: batch/v1
 kind: Job
 metadata:
