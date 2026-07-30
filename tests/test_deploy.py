@@ -316,3 +316,35 @@ def test_the_corpus_ingest_runs_after_the_migration_not_before():
     # Still exactly one pre-upgrade hook: the migration. If the ingest ever
     # became one, a corpus problem would start blocking deploys.
     assert rendered.count("helm.sh/hook: pre-install,pre-upgrade") == 1
+
+
+@helm_required
+def test_tracing_is_off_by_default_and_wired_when_a_host_is_set():
+    """LANGFUSE_HOST is the switch; the keys stay in the Secret.
+
+    Off is a supported state, not a broken one: with no host, `configure_tracing`
+    builds no exporter and `advisories.trace_id` stays NULL. The host is not a
+    secret and belongs in values where `helm get values` shows it; the public and
+    secret keys arrive through `envFrom` and must never be templated.
+    """
+    assert "LANGFUSE_HOST" not in _render()
+
+    rendered = _render("langfuse.host=http://langfuse-web.langfuse.svc.cluster.local:3000")
+    assert "LANGFUSE_HOST" in rendered
+    assert "langfuse-web.langfuse.svc.cluster.local" in rendered
+    # The keys are never rendered, only referenced.
+    for leaked in ("LANGFUSE_SECRET_KEY:", "sk-lf-", "pk-lf-"):
+        assert leaked not in rendered, f"{leaked} appears in a rendered manifest"
+
+
+@helm_required
+def test_langfuse_is_not_vendored_into_this_chart():
+    """It is a separate product with its own chart.
+
+    Vendoring four stateful services in would make `helm upgrade vinea` responsible
+    for someone else's database migrations. The chart wires an address; it does not
+    run the thing at that address (docs/deploy-langfuse.md).
+    """
+    rendered = _render("langfuse.host=http://example:3000")
+    for foreign in ("clickhouse", "langfuse/langfuse", "minio"):
+        assert foreign not in rendered.lower(), f"{foreign} is being deployed by this chart"

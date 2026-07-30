@@ -266,6 +266,26 @@ budget. The degraded-rate objective never pages: nothing is broken for a grower 
 it breaches, and waking someone for a correct answer is how a rota learns to ignore
 its pager.
 
+## Tracing
+
+One trace per advisory, showing the graph's node spans and the agents' model calls
+in one tree — and `FeatureBuilderNode` visibly has no model call beneath it.
+
+```bash
+docker compose --profile langfuse up -d
+export LANGFUSE_HOST=http://localhost:3000 \
+       LANGFUSE_PUBLIC_KEY=pk-lf-local-vinea \
+       LANGFUSE_SECRET_KEY=sk-lf-local-vinea
+uv run pytest tests/test_langfuse_live.py -v   # exports a trace and reads it back
+```
+
+Self-hosted (ADR-004) with `include_content=False`, so span payloads record *that*
+a model was called, its cost and its version — never the prompts, which carry
+depletion figures and block locations. Unset the three variables and no exporter is
+built: `trace_id` stays NULL and advisories are produced as before.
+
+[docs/deploy-langfuse.md](docs/deploy-langfuse.md) has the cluster path.
+
 ## Security
 
 Tenant isolation is enforced by Postgres row-level security, not by application
@@ -289,9 +309,16 @@ are exercised with `TestModel`/`FunctionModel` and `Agent.override`, and the phy
 is checked against hand-verified numbers and the real CSVs.
 
 Database tests **skip** rather than fail without Postgres — a red suite meaning "you
-didn't start Docker" trains people to ignore red. `docker compose up -d postgres` and
-they run; CI starts the service and gets no skips (301 passed, 1 skipped — the one
-needing a live LLM gateway).
+didn't start Docker" trains people to ignore red. Same for the four tests that need a
+live service:
+
+| what is running | result |
+|---|---|
+| nothing | 199 passed, 103 skipped |
+| Postgres | 303 passed, 4 skipped |
+| Postgres + Langfuse | 306 passed, 1 skipped *(the last needs an LLM gateway)* |
+
+CI starts Postgres and gets no database skips.
 
 ## Decisions
 
@@ -311,6 +338,10 @@ it. One has been reversed, by measurement.
 | [009](docs/adr/009-row-level-security.md) | Tenant isolation in the database, not in the queries |
 | [010](docs/adr/010-slos-in-sql.md) | SLOs measured in SQL |
 | [011](docs/adr/011-lexical-retrieval-only.md) | Lexical retrieval only — reversing 008's hybrid |
+
+ADR-004 and ADR-010 carry amendments rather than rewrites: 010 recorded "Langfuse
+not deployed" as a *permanent* debt and that ruling has been retracted, because
+"permanent" was a judgement about cost rather than a fact about the system.
 
 ADR-011 is the one worth reading first. Hybrid retrieval was chosen on a measured
 recall of 1.00, then a harder question set showed lexical search alone scored **0.78

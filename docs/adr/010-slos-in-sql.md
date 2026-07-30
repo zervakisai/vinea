@@ -137,7 +137,26 @@ to ignore its pager.
 
 ## The three debts
 
-**Phase 13 — Langfuse is not deployed. Recorded as permanent.**
+**Langfuse is not deployed. Recorded as permanent — and since retracted.**
+
+> **Amended 2026-07-30.** This is no longer true, and the retraction is the
+> honest part: "permanent" was a judgement about cost, and the operator decided
+> the cost was worth paying. It was never a fact about the system.
+>
+> Langfuse now runs, verified end to end: `docker compose --profile langfuse up -d`
+> exports a real span tree and `tests/test_langfuse_live.py` reads it back and
+> asserts that `FeatureBuilderNode` has no model call beneath it — the
+> LLM/deterministic boundary observed in the exported trace rather than claimed in
+> a docstring. The chart takes `langfuse.host`; keys come from the Secret it
+> already reads. See [deploy-langfuse.md](../deploy-langfuse.md).
+>
+> What stands from the paragraph below: the four-service cost is real, the e2e
+> still does not start it, and a cluster deployed *by the e2e* still has
+> `trace_id` NULL. What does not stand is calling that permanent.
+>
+> Worth noting what the debt cost while it was open. Nine phases of code asserted
+> that the trace tree shows the boundary, and nobody had ever looked at one. It was
+> true — but "recorded as permanent" is how a claim stops being checked.
 
 ADR-004 self-hosts Langfuse, and its stack is Postgres + ClickHouse + Redis +
 MinIO. Deploying it repeats ADR-003's argument against a second stateful system

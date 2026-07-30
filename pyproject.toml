@@ -108,6 +108,7 @@ testpaths = ["tests"]
 addopts = "-q"
 markers = [
     "db: touches Postgres; skipped when no DATABASE_URL/VINEA_TEST_DATABASE_URL is set",
+    "langfuse: needs a running Langfuse; skipped unless LANGFUSE_HOST and keys are set",
 ]
 filterwarnings = [
     # We pin pydantic-graph<2 and knowingly use the class-based Graph API (see graph.py docstring).

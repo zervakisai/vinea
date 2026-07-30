@@ -61,6 +61,14 @@ env:
   - name: VINEA_GATEWAY_MODEL
     value: {{ .Values.gateway.model | quote }}
 {{- end }}
+{{- if .Values.langfuse.host }}
+  # The host is not a secret and belongs in values, where `helm get values` shows
+  # it. LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY come from the Secret via
+  # envFrom above -- and all three must be present or `configure_tracing` builds no
+  # exporter at all, which is the correct degrade rather than a half-configured one.
+  - name: LANGFUSE_HOST
+    value: {{ .Values.langfuse.host | quote }}
+{{- end }}
 {{- end -}}
 
 {{- define "vinea.gatewayUrl" -}}

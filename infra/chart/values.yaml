@@ -116,6 +116,19 @@ slo:
     requests: {cpu: 50m, memory: 192Mi}
     limits: {memory: 512Mi}
 
+# Tracing (ADR-004, ADR-010). Set `host` to a reachable Langfuse and put
+# LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY in the Secret named by `secret.name`.
+#
+# Empty host -> no exporter is built and `advisories.trace_id` stays NULL. That is
+# the honest degrade: telemetry off is a deployment choice, not an error.
+#
+# Langfuse is NOT part of this chart and should not be: it is a separate product
+# with its own Helm chart, and vendoring four stateful services into ours would
+# make `helm upgrade vinea` responsible for somebody else's database migrations.
+# See docs/deploy-langfuse.md.
+langfuse:
+  host: ""
+
 ingress:
   enabled: false
   className: ""
