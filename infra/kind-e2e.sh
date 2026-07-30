@@ -101,12 +101,13 @@ echo "$revision" | grep -q "(head)" \
   || { echo "schema is not at head: ${revision:-<no output>}" >&2; exit 1; }
 echo "alembic: at head ($(echo "$revision" | grep -o '^[0-9a-f]*' | head -1))"
 
-step "assert: the default deploy carries no gateway (phase 14)"
+step "assert: the default deploy carries no gateway"
 # Phase 14's central claim, checked against a live pod rather than a rendered
 # template: with `gateway.enabled=false` nothing tells the app a gateway exists,
 # so `resolve_model()` returns the plain model string and this deployment is the
-# phase-13 one. A cluster that quietly grew a VINEA_GATEWAY_URL would mean the
-# "no gateway changes nothing" guarantee had become "no gateway is untested".
+# gateway-free deployment. A cluster that quietly grew a VINEA_GATEWAY_URL would
+# mean the "no gateway changes nothing" guarantee had become "no gateway is
+# untested".
 #
 # The gateway itself is not installed here: LiteLLM needs a provider key to be
 # worth starting, CI has none, and a proxy with no upstream proves nothing that
@@ -117,7 +118,7 @@ gateway_env=$(kubectl get deploy "${RELEASE}-vinea-api" \
 [[ -z "$gateway_env" ]] || { echo "api pod has VINEA_GATEWAY_URL=$gateway_env in the default deploy" >&2; exit 1; }
 echo "no VINEA_GATEWAY_URL on the api pod (correct for gateway.enabled=false)"
 
-step "assert: the expand migration added the cost columns (phase 14)"
+step "assert: the expand migration added the cost columns"
 # The pre-upgrade hook ran (asserted above); this asserts what it *did*. Four
 # additive nullable columns, and the nullability is the claim: a server_default
 # would make every advisory written before tonight report that it cost zero.
@@ -137,7 +138,7 @@ for col in cache_hit cost_usd input_tokens output_tokens; do
 done
 echo "cost columns: present, nullable, no default"
 
-step "assert: the pgvector extension and corpus tables exist (phase 15)"
+step "assert: the vector extension and corpus tables exist"
 # The genuinely risky part of migration c73a51e8d4b2 is `CREATE EXTENSION vector`,
 # which succeeds only on a server that HAS pgvector -- the stock postgres:16 image
 # does not. Asserting it here is asserting that the test fixture, the compose
@@ -161,7 +162,7 @@ echo "$schema" | grep -qE "corpus_chunks_cols=(9|10|11)" \
   || { echo "corpus_chunks not created as expected: ${schema:-<no output>}" >&2; exit 1; }
 echo "schema: $schema"
 
-step "assert: row-level security is real in the cluster (phase 17)"
+step "assert: row-level security is real in the cluster"
 # Behaviour, not configuration. `relrowsecurity = true` is what the FIRST version
 # of the RLS migration reported while being completely inert -- the connecting
 # role was a superuser, and superusers bypass row security unconditionally. So
@@ -222,7 +223,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/advisories/acme/20
 [[ "$code" == "404" || "$code" == "200" ]] || { echo "advisory read gave $code" >&2; exit 1; }
 echo "GET /advisories/acme/2026-07-28 -> $code"
 
-step "assert: the read was timed into api_request_samples (SLO)"
+step "assert: the read was timed into api_request_samples"
 samples=$(kubectl run slo-check --rm -i --restart=Never --image=vinea:e2e \
   --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
   --command -- python -c "

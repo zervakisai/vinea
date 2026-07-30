@@ -29,8 +29,12 @@ SRC = Path(__file__).resolve().parents[1] / "src"
 # Markers that address a curriculum reader. Each maps to what to do instead.
 FORBIDDEN = {
     # "phase 14 added this" -- the reader is not reading phases; git log has it.
+    #
+    # `[\s-]` and not `\s`: the first version missed "the phase-15 invariant"
+    # entirely, because a hyphen is not whitespace. Three survived that way and were
+    # found by a grep the test should have made unnecessary.
     "build-phase reference": (
-        re.compile(r"\bphases?\s+\d", re.IGNORECASE),
+        re.compile(r"\bphases?[\s-]+\d", re.IGNORECASE),
         "state the reason inline, or cite an ADR; the phase history is in git and docs/",
     ),
     # "S4.3", "S3.5" -- section codes from a design document.
@@ -116,7 +120,13 @@ def test_the_forbidden_patterns_actually_match_what_they_claim_to():
     suite would go green the day someone tightened a pattern into uselessness.
     """
     cases = {
-        "build-phase reference": ["# phase 14 added this", "# Phase 8 built the queue", "# phases 1-4"],
+        "build-phase reference": [
+            "# phase 14 added this",
+            "# Phase 8 built the queue",
+            "# phases 1-4",
+            "# the phase-15 invariant",      # hyphenated: the form that got through
+            "# as it did in phase\n13",       # across a line break: the other one
+        ],
         "design-doc section code": ["# see S4.3", "# S3.5's degraded path"],
         "workstream code": ["# B2's circularity trap", "# B3-4 typed variables"],
         "reference to DESIGN.md": ["# DESIGN.md B1 argues"],

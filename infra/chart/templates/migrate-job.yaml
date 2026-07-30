@@ -1,6 +1,6 @@
 {{- if .Values.migrate.enabled }}
 {{/*
-The ordering guarantee of phase 13, expressed declaratively.
+The ordering guarantee, expressed declaratively.
 
 `pre-install,pre-upgrade` makes Helm run this Job and WAIT for it to succeed
 before it applies anything else in the release. So the schema is migrated before

@@ -37,7 +37,7 @@ variable "machine_type" {
 }
 
 variable "db_tier" {
-  description = "Cloud SQL tier. db-f1-micro is the cheapest that exists and is enough for one vineyard's advisories; it is NOT enough for the phase-15 pgvector work, which will want more memory."
+  description = "Cloud SQL tier. db-f1-micro is the cheapest that exists and is enough for one vineyard's advisories and the FAO-56 corpus, which is retrieved with full-text search rather than vectors (ADR-011)."
   type        = string
   default     = "db-f1-micro"
 }

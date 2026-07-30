@@ -1,6 +1,6 @@
 """The SLIs, as SQL over rows the system already keeps.
 
-Every query here is cross-tenant, so every caller needs the phase-17 ops scope.
+Every query here is cross-tenant, so every caller needs the ops scope.
 That is stated rather than assumed because an SLI that silently measured one
 tenant would be the most plausible-looking wrong number this system could
 produce.

@@ -1,8 +1,8 @@
 """The facade the agents call — and the floor it falls to.
 
 `retrieve_for` is the whole public surface, and it **never raises**. The ladder
-is deliberately shorter than the phase-12 prompt registry's, because the correct
-floor here is emptier:
+is deliberately shorter than the prompt registry's, because the correct floor here
+is emptier:
 
   1. Retrieval works  -> passages, recorded in the citation ledger.
   2. Anything at all goes wrong -> **no passages**, and the advisory is produced

@@ -1,5 +1,5 @@
 {{- if and .Values.gateway.enabled (not .Values.gateway.externalUrl) }}
-# The LLM gateway (phase 14, ADR-007). Rendered only when the chart is asked to
+# The LLM gateway (ADR-007). Rendered only when the chart is asked to
 # run one; `gateway.externalUrl` points the app at a gateway somebody else
 # operates and skips all of this.
 #

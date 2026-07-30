@@ -398,7 +398,7 @@ def _validate_coordinator(ctx: RunContext[CoordDeps], out: Reconciliation) -> Re
 async def run_irrigation_agent(crop: Deps, features: IrrigationFeatures, dq: DataQuality, target_date: date, run_date: date) -> IrrigationAdvice:
     # Retrieval is strictly downstream of the features -- they are already
     # computed and passed in. Nothing retrieved can reach build_features, which is
-    # the phase-15 invariant expressed as call order rather than as a comment.
+    # the retrieval invariant expressed as call order rather than as a comment.
     passages = retrieve_for("irrigation", irrigation_query(features))
     deps = IrrDeps(crop=crop, features=features, data_quality=dq, target_date=target_date, run_date=run_date, passages=passages)
     res = await irrigation_agent.run(render_irrigation_input(features, target_date), deps=deps, model=resolve_model())

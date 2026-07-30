@@ -8,7 +8,7 @@
 # CI runs `tofu fmt -check` and `tofu validate` (init -backend=false) -- and
 # STOPS there. `plan` queries provider APIs, so it needs real credentials and a
 # billing account; pretending a credential-less plan verifies anything would be
-# exactly the unexercised-claim problem phase 13 exists to remove. Plan/apply are
+# exactly the unexercised-claim problem this file exists to remove. Plan/apply are
 # documented below as the manual step they are.
 #
 #   tofu init && tofu plan -var project_id=... && tofu apply

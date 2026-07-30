@@ -52,8 +52,8 @@ env:
   - name: VINEA_PROMPT_LABEL
     value: {{ .Values.config.promptLabel | quote }}
 {{- if .Values.gateway.enabled }}
-  # The URL is the whole switch (phase 14). Unset -> `resolve_model()` returns the
-  # plain model string and the deployment behaves exactly as it did in phase 13.
+  # The URL is the whole switch. Unset -> `resolve_model()` returns the plain model
+  # string and the deployment behaves as though no gateway existed.
   # VINEA_GATEWAY_KEY is the virtual key and comes from the Secret via envFrom
   # above, never from here -- values are readable with `helm get values`.
   - name: VINEA_GATEWAY_URL

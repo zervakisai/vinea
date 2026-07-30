@@ -64,10 +64,10 @@ migrate:
     requests: {cpu: 50m, memory: 192Mi}
     limits: {memory: 512Mi}
 
-# The LLM gateway (phase 14). Off by default, and that default is the phase's
-# main claim: with `enabled: false` no VINEA_GATEWAY_URL is set, `resolve_model()`
-# returns the plain model string, and the deployment is byte-for-byte the phase-13
-# one. Turning it on is a values change.
+# The LLM gateway. Off by default, and that default matters: with `enabled: false`
+# no VINEA_GATEWAY_URL is set, `resolve_model()` returns the plain model string, and
+# the deployment behaves as though this file had no gateway section at all. Turning
+# it on is a values change.
 gateway:
   enabled: false
   image: ghcr.io/berriai/litellm:main-v1.65.0-stable
@@ -88,9 +88,9 @@ gateway:
     requests: {cpu: 100m, memory: 384Mi}
     limits: {memory: 1Gi}
 
-# Retrieval (phase 15, ADR-008). Off by default, like the gateway, and for the
-# same reason: with `enabled: false` no corpus is ingested, `retrieve_for` finds
-# nothing, and the deployment behaves exactly as phase 14's did.
+# Retrieval (ADR-008, ADR-011). Off by default, like the gateway, and for the same
+# reason: with `enabled: false` no corpus is ingested, `retrieve_for` finds nothing,
+# and advisories are produced without citations.
 #
 # The app image needs nothing special: retrieval is Postgres full-text search
 # (ADR-011), so the ingest Job runs the same image as everything else.

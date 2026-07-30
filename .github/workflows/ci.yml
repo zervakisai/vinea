@@ -3,7 +3,7 @@ name: CI
 # The gate every push and PR passes: lint, a migrated Postgres, the full test
 # suite (offline -- conftest sets ALLOW_MODEL_REQUESTS = False, so no live LLM
 # ever runs in CI), and the prompt-drift check. Nothing here needs a model key.
-# Added in phase 12, alongside the eval gate it exists to protect.
+# Added alongside the eval gate it exists to protect.
 on:
   push:
     branches: [main]
@@ -18,7 +18,7 @@ jobs:
     # docker-compose is only a host-collision workaround, not needed in CI).
     services:
       postgres:
-        # pgvector's image, not `postgres:16` (phase 15). Same server plus the
+        # pgvector's image, not `postgres:16`. Same server plus the
         # vector extension files; without them migration c73a51e8d4b2's
         # `CREATE EXTENSION vector` fails and every db-marked test errors. The
         # compose stack and the kind fixture moved with it -- one image, three
@@ -72,14 +72,14 @@ jobs:
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
 
   # --------------------------------------------------------------------------
-  # phase 13: the deploy path, exercised rather than diagrammed.
+  # The deploy path, exercised rather than diagrammed.
   #
   # `needs: test` is the ordering the phase argued was not negotiable:
   # test -> build -> migrate -> deploy -> smoke. The migrate step is not a step
   # here on purpose -- it is the chart's pre-upgrade hook, so the ordering lives
   # in the artifact rather than in this file, where a future edit could reorder it.
   # --------------------------------------------------------------------------
-  # phase 17. Two scanners, because they see different things: pip-audit reads
+  # Two scanners, because they see different things: pip-audit reads
   # uv.lock, an image scanner reads the OS layer that uv.lock knows nothing about.
   #
   # The gate is set at ZERO and can hold there, which is only true because phase
@@ -177,7 +177,7 @@ jobs:
           helm status vinea || true
 
   # --------------------------------------------------------------------------
-  # phase 13: the paid path is checked, never applied.
+  # The paid path is checked, never applied.
   #
   # `validate` and `fmt` are all CI can honestly do here. `plan` queries provider
   # APIs, so it needs real credentials and a billing account -- and a plan that

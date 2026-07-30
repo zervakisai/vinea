@@ -1,4 +1,4 @@
-# LiteLLM proxy -- the gateway (phase 14, ADR-007).
+# LiteLLM proxy -- the gateway (ADR-007).
 #
 # Read this file as the answer to "what does the gateway know that the app must
 # not?". Three things: which upstream serves an alias, what a key may spend, and
@@ -20,7 +20,7 @@ model_list:
   # restart; the app does not learn it happened, and `advisories.model_id` keeps
   # recording the alias, which is why the five drift tags now need the gateway's
   # own logs to resolve an alias back to a concrete model. That is a real cost of
-  # the indirection and phase 14's doc says so rather than hiding it.
+  # the indirection, recorded in ADR-007 rather than hidden.
   - model_name: vinea-nightly
     litellm_params:
       model: anthropic/claude-sonnet-4-5
@@ -39,9 +39,9 @@ model_list:
 
 router_settings:
   fallbacks: [{ "vinea-nightly": ["vinea-nightly-fallback"] }]
-  # Retries belong to exactly one layer, and phase 8 already argued this: the
-  # worker owns the per-night retry, pydantic-ai owns the per-call ModelRetry,
-  # and a third retrier here would multiply them. One attempt, then the fallback.
+  # Retries belong to exactly one layer: the worker owns the per-night retry,
+  # pydantic-ai owns the per-call ModelRetry, and a third retrier here would
+  # multiply them. One attempt, then the fallback.
   num_retries: 0
 
 litellm_settings:
