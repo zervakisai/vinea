@@ -5,9 +5,10 @@ filling since phase 6:
 
   **Advisory availability** -- did an advisory exist by 06:00 in the grower's own
   morning? `advisories.created_at` and `grower_config.timezone`.
-  **Read latency** -- p95 of the grower-facing GET. The one SLI with no row
-  behind it, which is why it is measured differently and why that difference is
-  called out rather than smoothed over.
+  **Read latency** -- p95 of the grower-facing GET, from timings the API records
+  per request into `api_request_samples`. Exact `percentile_cont`, not a
+  histogram: the route is served a few hundred times a day, which is what makes
+  the simple approach the correct one.
   **Judgement rate** -- what fraction of advisories came from the deterministic
   path. `advisories.degraded`, a column since phase 6.
 
@@ -19,8 +20,12 @@ problem, not a definition problem -- and defining them in SQL means the
 definition is checkable by anyone with psql and no agreement about label
 cardinality.
 
+`python -m vinea.slo check` exits non-zero on a breach and records a row in
+`slo_breaches`, which is how "how long have we been in breach" becomes
+answerable -- a live query can only say whether we are.
+
 What this package deliberately does not contain: a scrape endpoint nothing
-scrapes, and an alerting daemon. ADR-010 explains both.
+scrapes, and anything that notifies a human. ADR-010 explains both.
 """
 
 from vinea.slo.objectives import (
@@ -34,6 +39,7 @@ from vinea.slo.queries import (
     availability_by_day,
     degraded_rate,
     measure_all,
+    read_latency_p95,
 )
 
 __all__ = [
@@ -45,4 +51,5 @@ __all__ = [
     "degraded_rate",
     "error_budget",
     "measure_all",
+    "read_latency_p95",
 ]

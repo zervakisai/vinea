@@ -131,7 +131,11 @@ def db_session(db_engine):
 # queue and leaves nothing behind.
 _ALL_TABLES = (
     "advisory_tasks, queue_depth_samples, eval_runs, annotations, "
-    "advisories, grower_config, weather_observations, feature_cache"
+    "advisories, grower_config, weather_observations, feature_cache, "
+    # Added when the SLO work landed. A table missing from this list does not
+    # fail -- it leaks rows into the next test, which shows up as an unrelated
+    # assertion about a percentile computed over somebody else's samples.
+    "api_request_samples, slo_breaches"
 )
 
 

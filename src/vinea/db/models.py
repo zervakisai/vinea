@@ -697,6 +697,67 @@ class AdvisoryCitation(SQLModel, table=True):
     created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
 
 
+class ApiRequestSample(SQLModel, table=True):
+    """One timed API request. The read-latency SLI's raw data.
+
+    Every request, not a histogram, and the traffic profile is what makes that the
+    right choice rather than a lazy one: a nightly-advisory product serves the
+    grower-facing read a few hundred times a day, so a week is thousands of rows.
+    At that size an exact `percentile_cont(0.95)` is cheaper to reason about than
+    bucket boundaries, and it keeps the SLI a SQL query (ADR-010) rather than a
+    number only a metrics backend can produce.
+
+    No `tenant` column, so no row policy: the SLO is fleet-wide, and adding a
+    tenant here would make a latency measurement a per-tenant secret for no gain.
+
+    `route` is the *template* (`/advisories/{tenant}/{run_date}`), never the
+    resolved path. Storing resolved paths would make every URL its own series and
+    put tenant names in a table that has no policy protecting them.
+    """
+
+    __tablename__ = "api_request_samples"
+    __table_args__ = (Index("ix_api_request_samples_route_time", "route", "observed_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    observed_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+    route: str = Field(sa_column=Column(Text, nullable=False))
+    method: str = Field(sa_column=Column(Text, nullable=False))
+    status_code: int = Field(sa_column=Column(Integer, nullable=False))
+    duration_ms: float = Field(sa_column=Column(Float, nullable=False))
+
+
+class SLOBreach(SQLModel, table=True):
+    """One recorded breach of one objective. History, not alerting.
+
+    `python -m vinea.slo check` writes a row when an objective is not met. The
+    distinction from an alert matters: nothing here notifies anyone, and ADR-010
+    declined a notification path until somebody is on a rota.
+
+    What this buys that a dashboard query cannot is *duration*. "Are we in breach"
+    is answerable from the samples; "how long have we been" is not, because
+    `api_request_samples` is prunable and an advisory's absence leaves no row at
+    all. A breach that has persisted for nine days is a different conversation
+    from one that started this morning, and only a stored history distinguishes
+    them.
+
+    No `tenant`: every objective is fleet-wide.
+    """
+
+    __tablename__ = "slo_breaches"
+    __table_args__ = (Index("ix_slo_breaches_objective_time", "objective", "detected_at"),)
+
+    id: int | None = Field(default=None, primary_key=True)
+    detected_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+    objective: str = Field(sa_column=Column(Text, nullable=False))
+    # The measured value, and NULL when the objective could not be measured at all
+    # -- which is itself worth recording, because an SLI that stopped reporting
+    # looks like a healthy one on every chart.
+    value: float | None = Field(default=None, sa_column=Column(Float))
+    target: float = Field(sa_column=Column(Float, nullable=False))
+    sample_size: int = Field(sa_column=Column(Integer, nullable=False))
+    budget_exhausted: bool | None = Field(default=None, sa_column=Column(Boolean))
+
+
 class QueueDepthSample(SQLModel, table=True):
     """A point-in-time snapshot of how deep the queue is. Metrics, in the DB.
 

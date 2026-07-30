@@ -98,6 +98,12 @@ class ApiClient:
         r.raise_for_status()
         return r.json()
 
+    def slo(self) -> list[dict]:
+        """The objectives and their error budgets, from /ops/slo."""
+        r = self._get("/ops/slo", ops=True)
+        r.raise_for_status()
+        return r.json()
+
     def all_advisories(
         self, *, start: date | None = None, end: date | None = None, limit: int = 500
     ) -> list[dict]:

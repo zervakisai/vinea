@@ -197,14 +197,41 @@ def test_the_default_deploy_has_no_gateway():
 
 
 @helm_required
-def test_enabling_the_gateway_wires_every_workload_to_it():
-    """API, UI and the worker CronJob all get the URL, or none of them should.
+def test_the_worker_is_wired_to_the_gateway_and_the_ui_is_not():
+    """The workload that calls a model gets the URL. The UI never should.
 
-    A worker pointed at the gateway and an API that is not would produce advisories
-    with cost recorded and reads that cannot explain them.
+    This replaces an assertion that counted occurrences of VINEA_GATEWAY_URL and
+    expected 3. The count was a hostage to the next workload added -- it broke the
+    moment the SLO CronJob started using the shared env helper, which was correct
+    behaviour and a red test -- and it never checked *which* workloads, so it would
+    equally have passed with the wrong three.
+
+    Checking by workload also surfaced something the count hid: the UI is not
+    wired to the gateway at all, and must not be. ADR-005 says it may only speak
+    HTTP to the API, so a gateway URL in its environment would be either dead
+    configuration or a violation waiting to happen.
     """
     rendered = _render("gateway.enabled=true")
-    assert rendered.count("VINEA_GATEWAY_URL") == 3
+
+    def docs_for(component: str) -> list[str]:
+        # ANY document for the component, not the first: a Service and a
+        # Deployment both carry `component: api`, and the Service renders first
+        # with no env at all.
+        return [doc for doc in rendered.split("---") if f"component: {component}" in doc]
+
+    worker_docs = docs_for("worker")
+    assert worker_docs, "no rendered worker manifest"
+    assert any("VINEA_GATEWAY_URL" in doc for doc in worker_docs), (
+        "the worker is the only workload that calls a model; it must be wired"
+    )
+
+    ui_docs = docs_for("ui")
+    assert ui_docs, "no rendered ui manifest"
+    assert not any("VINEA_GATEWAY_URL" in doc for doc in ui_docs), (
+        "the UI may only speak HTTP to the API (ADR-005) -- it has no business "
+        "holding a gateway URL"
+    )
+
     assert "http://vinea-vinea-gateway:4000" in rendered
     assert "kind: ConfigMap" in rendered
 

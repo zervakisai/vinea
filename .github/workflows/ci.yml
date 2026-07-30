@@ -112,8 +112,17 @@ jobs:
             --format requirements-txt > /tmp/app.txt
           uvx pip-audit -r /tmp/app.txt --progress-spinner off
 
-      - name: Build the app image
-        run: docker build --target app -t vinea:scan .
+      # Every image variant, not just the default one. The build takes
+      # `--build-arg PROVIDER` and `--build-arg GATEWAY`, and until now CI only
+      # ever built the default corner of that matrix -- so a broken
+      # `PROVIDER=openai` or `GATEWAY=1` resolution would have shipped and been
+      # discovered by whoever deployed it.
+      - name: Build every image variant
+        run: |
+          docker build --target app -t vinea:scan .
+          docker build --target app --build-arg PROVIDER=openai -t vinea:scan-openai .
+          docker build --target app --build-arg GATEWAY=1 -t vinea:scan-gateway .
+          docker build --target ui -t vinea:scan-ui .
 
       # Trivy reads the Debian layer under the venv -- the part `uv.lock` cannot
       # see. Failing on HIGH/CRITICAL only: a base image always carries a tail of

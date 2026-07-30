@@ -194,12 +194,12 @@ def test_an_unmeasured_objective_never_reports_success():
     assert "no data" in result.summary
 
 
-def test_read_latency_is_declared_and_not_collected(committing_db):
-    """Written down, agreed, and honestly absent.
+def test_read_latency_used_to_be_declared_and_uncollected(committing_db):
+    """Kept as the boundary case, inverted.
 
-    Latency is not persisted anywhere, and this project declined to run a metrics
-    backend (ADR-010). A stub returning 0.0 would report a permanent, excellent,
-    entirely fictional p95 -- so it returns None and says so.
+    ADR-010 shipped this objective returning `None` because latency was not
+    persisted anywhere. It is persisted now, and the property that mattered then
+    still matters: an idle window reports no data rather than excellent latency.
     """
     with Session(committing_db) as s:
         scope_to_ops(s)
@@ -289,3 +289,156 @@ def test_a_tenant_with_two_blocks_is_counted_once(committing_db):
 
     assert result.sample_size == 1, "two blocks must not double-count one tenant"
     assert result.value == 1.0
+
+
+# --------------------------------------------------------------------------- #
+# Read latency, now measured from rows                                        #
+# --------------------------------------------------------------------------- #
+
+
+def _sample(session, duration_ms: float, *, route: str | None = None, status: int = 200) -> None:
+    from vinea.slo.queries import SLO_READ_ROUTE
+
+    session.execute(
+        text(
+            "INSERT INTO api_request_samples (route, method, status_code, duration_ms) "
+            "VALUES (:r, 'GET', :s, :d)"
+        ),
+        {"r": route or SLO_READ_ROUTE, "s": status, "d": duration_ms},
+    )
+
+
+def test_read_latency_is_measured_from_stored_timings(committing_db):
+    """ADR-010 declared this objective and left it uncollected. It is collected now.
+
+    `percentile_cont`, exact rather than bucketed, which is affordable because the
+    grower-facing read is served a few hundred times a day. The traffic profile is
+    what makes the simple approach correct here, not laziness.
+    """
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for ms in [10.0] * 95 + [900.0] * 5:
+            _sample(s, ms)
+        s.commit()
+        result = read_latency_p95(s)
+
+    assert result.sample_size == 100
+    assert 10.0 <= result.value <= 900.0
+    assert result.met is True, "p95 of ninety-five 10ms samples must be under 300ms"
+
+
+def test_a_slow_p95_breaches(committing_db):
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for ms in [400.0] * 20:
+            _sample(s, ms)
+        s.commit()
+        result = read_latency_p95(s)
+    assert result.value >= 400.0
+    assert result.met is False
+
+
+def test_server_errors_are_excluded_from_the_percentile(committing_db):
+    """A request that failed did not take a measurable time to succeed.
+
+    Letting fast 500s pull the percentile down is how a latency SLI reports
+    health during an outage -- the graph improves as the system breaks.
+    """
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for _ in range(20):
+            _sample(s, 1.0, status=500)      # fast failures
+        for _ in range(5):
+            _sample(s, 500.0, status=200)    # slow successes
+        s.commit()
+        result = read_latency_p95(s)
+    assert result.sample_size == 5, "5xx responses must not count as latency samples"
+    assert result.met is False
+
+
+def test_only_the_slo_route_is_measured(committing_db):
+    """Probe traffic would swamp it.
+
+    Kubernetes hits /health every few seconds -- thousands of rows a day of
+    something nobody promised. An SLI measured over probe traffic reports the
+    health of the probe.
+    """
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for _ in range(50):
+            _sample(s, 1.0, route="/health")
+        _sample(s, 250.0)
+        s.commit()
+        result = read_latency_p95(s)
+    assert result.sample_size == 1
+    assert result.value == pytest.approx(250.0)
+
+
+def test_an_idle_window_reports_no_data_not_excellent_latency(committing_db):
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        result = read_latency_p95(s)
+    assert result.value is None
+    assert result.met is None
+
+
+# --------------------------------------------------------------------------- #
+# The check command                                                           #
+# --------------------------------------------------------------------------- #
+
+
+def test_check_exits_non_zero_and_records_a_breach(committing_db, monkeypatch):
+    """The SLO equivalent of `alembic check`: one question, one exit code.
+
+    Not alerting -- nothing notifies anyone. The row is what makes "how long have
+    we been in breach" answerable, which a live query cannot say.
+    """
+    from sqlalchemy import func, select
+
+    from vinea.db.models import SLOBreach
+    from vinea.slo.__main__ import main
+
+    monkeypatch.setattr("vinea.slo.__main__.make_engine", lambda: committing_db)
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for _ in range(20):
+            _sample(s, 900.0)
+        s.commit()
+
+    assert main(["check", "--today", TODAY.isoformat()]) == 1
+
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        rows = s.execute(
+            select(SLOBreach.objective, SLOBreach.value, SLOBreach.target)
+        ).all()
+        count = s.execute(select(func.count()).select_from(SLOBreach)).scalar_one()
+    assert count == 1
+    assert rows[0][0] == READ_LATENCY.key
+    assert rows[0][1] >= 900.0
+
+
+def test_check_passes_when_everything_measured_is_met(committing_db, monkeypatch):
+    from vinea.slo.__main__ import main
+
+    monkeypatch.setattr("vinea.slo.__main__.make_engine", lambda: committing_db)
+    with Session(committing_db) as s:
+        scope_to_ops(s)
+        for _ in range(20):
+            _sample(s, 12.0)
+        s.commit()
+    assert main(["check", "--today", TODAY.isoformat()]) == 0
+
+
+def test_strict_fails_on_an_objective_that_cannot_be_measured(committing_db, monkeypatch):
+    """Unmeasured is not met, and the two need different exit codes.
+
+    A cron job wants to know about breaches. A release gate wants to know the
+    measurement is working at all -- an SLI that stopped reporting looks like a
+    healthy one on every chart.
+    """
+    from vinea.slo.__main__ import main
+
+    monkeypatch.setattr("vinea.slo.__main__.make_engine", lambda: committing_db)
+    assert main(["check", "--today", TODAY.isoformat()]) == 0
+    assert main(["check", "--strict", "--today", TODAY.isoformat()]) == 1

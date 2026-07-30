@@ -75,6 +75,28 @@ their own for anyone east of Greenwich — so the gap shows up as a breach and s
 somebody to fix the config. Excluding such tenants would improve the number and
 hide the problem.
 
+> **Amended 2026-07-30.** Two of this ADR's stated limits have been closed, and
+> the reasoning for the third stands.
+>
+> **Read latency is now collected.** The section below rejected a process-local
+> histogram and a metrics backend, and missed a third option that the traffic
+> profile makes available: store every timing. The grower-facing read is served a
+> few hundred times a day, so a week is thousands of rows, and at that size an
+> exact `percentile_cont(0.95)` in SQL is simpler than bucket boundaries. The
+> objective is measured from `api_request_samples`; the property this ADR cared
+> about — an idle window reporting *no data* rather than excellent latency — is
+> preserved and tested.
+>
+> **`python -m vinea.slo check` exists**, exits non-zero on a breach, and records a
+> row in `slo_breaches`. The rejected alternative below was *alerting from a
+> nightly job*, and this is not that: nothing notifies anyone. It is the SLO
+> equivalent of `alembic check` — one question, one exit code, runnable by a
+> person, by cron, or by CI. What the table adds is **duration**: whether we are in
+> breach is answerable from the samples, how long we have been is not.
+>
+> **No notification path, still.** That limit holds until somebody is on a rota,
+> for the reason given below.
+
 ### Why read latency is declared and not collected
 
 It is the one SLI with no row behind it. Collecting it means either a middleware

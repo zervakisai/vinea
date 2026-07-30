@@ -1,0 +1,58 @@
+{{- if .Values.slo.enabled }}
+# Evaluate the objectives once a day and record any breach.
+#
+# 06:05 local, five minutes after the availability deadline: earlier and it would
+# fail every tenant whose advisory is still being written; later and nobody sees
+# the breach on the morning it happened.
+#
+# This is not alerting. Nothing here notifies anyone -- ADR-010 declined a
+# notification path until somebody is on a rota. What it does is exit non-zero and
+# write to `slo_breaches`, so the CronJob's own failure count becomes the signal
+# and "how long have we been in breach" becomes a query.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "vinea.fullname" . }}-slo-check
+  labels:
+    {{- include "vinea.labels" . | nindent 4 }}
+    app.kubernetes.io/component: slo-check
+spec:
+  schedule: {{ .Values.slo.schedule | quote }}
+  timeZone: {{ .Values.worker.timeZone | quote }}
+  concurrencyPolicy: Forbid
+  # Kept deliberately: a run that failed is the record that the objectives were
+  # breached that morning, and `successfulJobsHistoryLimit: 1` would throw away
+  # the pattern that matters -- three consecutive red mornings.
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 14
+  jobTemplate:
+    spec:
+      # No retries. A breach is not a transient failure, and retrying it three
+      # times writes three rows for one morning.
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            {{- include "vinea.labels" . | nindent 12 }}
+            app.kubernetes.io/component: slo-check
+        spec:
+          restartPolicy: Never
+          securityContext:
+            fsGroup: 1001
+          containers:
+            - name: slo-check
+              image: {{ include "vinea.appImage" . }}
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+              securityContext:
+                {{- include "vinea.securityContext" . | nindent 16 }}
+              command: ["python", "-m", "vinea.slo", "check"]
+              {{- include "vinea.env" . | nindent 14 }}
+              resources:
+                {{- toYaml .Values.slo.resources | nindent 16 }}
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
+{{- end }}

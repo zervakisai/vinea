@@ -136,21 +136,47 @@ def degraded_rate(
     return SLIResult(objective=JUDGEMENT_RATE, value=value, sample_size=total)
 
 
-def read_latency_p95(_session: Session, **_kwargs) -> SLIResult:
-    """The one SLI with no row behind it, and it returns None on purpose.
+_LATENCY_SQL = text("""
+SELECT percentile_cont(0.95) WITHIN GROUP (ORDER BY duration_ms) AS p95,
+       count(*) AS samples
+FROM api_request_samples
+WHERE observed_at >= now() - make_interval(days => :window_days)
+  AND route = :route
+  AND method = 'GET'
+  AND status_code < 500
+""")
 
-    Latency is not persisted anywhere. Measuring it means either a middleware
-    histogram -- process-local, so it dies with the pod and cannot be aggregated
-    across replicas -- or a metrics backend this project has declined to run
-    (ADR-010).
+# The route the SLO is about: the advisory a grower opens. Not the history list,
+# and not the enqueue -- POST returns 202 without waiting for work, so its latency
+# is a queue property rather than something anyone experiences.
+SLO_READ_ROUTE = "/advisories/{tenant}/{run_date}"
 
-    Returning `None` with a sample size of zero is the honest state: the
-    objective is written down, the target is agreed, and the indicator is not
-    being collected. `Objective.is_met(None)` returns None, so nothing downstream
-    can mistake this for a pass. A stub returning 0.0 would report a permanent,
-    excellent, entirely fictional latency.
+
+def read_latency_p95(
+    session: Session, *, window_days: int = READ_LATENCY.window_days, **_kwargs
+) -> SLIResult:
+    """p95 of the grower-facing read, from stored timings.
+
+    `percentile_cont`, not a histogram bucket. Exact, and affordable because the
+    route is served a few hundred times a day rather than a few hundred times a
+    second -- the traffic profile is what makes the simple thing correct here.
+
+    5xx responses are excluded. A request that failed did not take a measurable
+    amount of time to succeed, and letting fast errors pull the percentile down is
+    how a latency SLI reports health during an outage.
+
+    No samples yields `None`, not 0.0. `Objective.is_met(None)` is None, so an
+    idle window cannot be mistaken for an excellent one.
     """
-    return SLIResult(objective=READ_LATENCY, value=None, sample_size=0)
+    row = session.execute(
+        _LATENCY_SQL, {"window_days": window_days, "route": SLO_READ_ROUTE}
+    ).one()
+    p95, samples = row[0], int(row[1])
+    return SLIResult(
+        objective=READ_LATENCY,
+        value=float(p95) if p95 is not None else None,
+        sample_size=samples,
+    )
 
 
 _MEASURERS = {

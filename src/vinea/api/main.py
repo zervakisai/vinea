@@ -20,6 +20,7 @@ Routes:
 
 from __future__ import annotations
 
+import logging
 from collections.abc import Iterator
 from datetime import date
 
@@ -38,8 +39,11 @@ from vinea.api.schemas import (
     SLOStatus,
 )
 from vinea.db import repository
+from vinea.db.models import ApiRequestSample
 from vinea.db.session import make_engine, scope_to_ops, scope_to_tenant
 from vinea.jobs import metrics, queue
+
+logger = logging.getLogger(__name__)
 
 # A single engine for the app's lifetime; sessions are per-request. Overridable in
 # tests via dependency_overrides on `get_engine`.
@@ -107,6 +111,55 @@ app = FastAPI(
     summary="A thin layer over the advisory queue and store. It enqueues and reads; it never runs a model.",
     version="0.1.0",
 )
+
+# Routes whose latency is an SLO. Only these are timed.
+#
+# NOT /health and /ready: Kubernetes probes them every few seconds, which is
+# thousands of rows a day of nothing anyone promised, drowning the few hundred
+# requests a grower actually makes. An SLI measured over probe traffic reports the
+# health of the probe.
+TIMED_ROUTES = frozenset({"/advisories/{tenant}/{run_date}", "/advisories/{tenant}"})
+
+
+@app.middleware("http")
+async def record_request_latency(request, call_next):
+    """Time the grower-facing reads and store the timing. Never fails a request.
+
+    A synchronous insert in the read path, which is a real cost stated plainly:
+    it is affordable because this route is served a few hundred times a day, and
+    it would not be at a thousand requests a second. The alternative -- an
+    in-process histogram -- dies with the pod and cannot be aggregated across
+    replicas, which is exactly why ADR-010 left this objective uncollected.
+
+    `route` is the path *template* from the matched route, never the resolved
+    path: resolved paths would make every tenant its own series and put tenant
+    names in a table with no row policy on it.
+    """
+    import time
+
+    started = time.perf_counter()
+    response = await call_next(request)
+    duration_ms = (time.perf_counter() - started) * 1000.0
+
+    matched = request.scope.get("route")
+    route = getattr(matched, "path", "") or ""
+    if request.method == "GET" and route in TIMED_ROUTES:
+        try:
+            with Session(get_engine()) as session:
+                scope_to_ops(session)
+                session.add(
+                    ApiRequestSample(
+                        route=route,
+                        method=request.method,
+                        status_code=response.status_code,
+                        duration_ms=duration_ms,
+                    )
+                )
+                session.commit()
+        except Exception:  # noqa: BLE001 -- measurement must never break the thing measured
+            logger.debug("could not record request latency for %s", route, exc_info=True)
+
+    return response
 
 
 def _database_state(session: Session) -> str:
