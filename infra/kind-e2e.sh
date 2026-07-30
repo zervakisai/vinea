@@ -214,6 +214,39 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -XPOST localhost:18080/advisories/
 [[ "$code" == "202" ]] || { echo "enqueue not 202 (got $code)" >&2; exit 1; }
 echo "POST /advisories/acme/2026-07-28 -> 202"
 
+# A read of the advisory route, which is the one with a latency SLO. It 404s --
+# the worker has not run -- and that is the point: the middleware must record the
+# timing regardless of status, so the SLI reflects what the grower experienced.
+code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/advisories/acme/2026-07-28 \
+  -H 'X-API-Key: key-acme')
+[[ "$code" == "404" || "$code" == "200" ]] || { echo "advisory read gave $code" >&2; exit 1; }
+echo "GET /advisories/acme/2026-07-28 -> $code"
+
+step "assert: the read was timed into api_request_samples (SLO)"
+samples=$(kubectl run slo-check --rm -i --restart=Never --image=vinea:e2e \
+  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+  --command -- python -c "
+from sqlalchemy import text
+from sqlmodel import Session
+from vinea.db.session import make_engine, scope_to_ops
+from vinea.slo.queries import SLO_READ_ROUTE, read_latency_p95
+with Session(make_engine()) as s:
+    scope_to_ops(s)
+    n = s.execute(text('SELECT count(*) FROM api_request_samples WHERE route = :r'), {'r': SLO_READ_ROUTE}).scalar_one()
+    r = read_latency_p95(s)
+print(f'samples={n} p95={r.value} met={r.met}')
+" 2>/dev/null || true)
+echo "$samples" | grep -qE "samples=[1-9]" \
+  || { echo "the read was not timed: ${samples:-<no output>}" >&2; exit 1; }
+echo "latency: $samples"
+
+step "assert: the SLO check runs and reports"
+kubectl run slo-cmd --rm -i --restart=Never --image=vinea:e2e \
+  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+  --command -- python -m vinea.slo report >/dev/null 2>&1 \
+  || { echo "python -m vinea.slo report failed" >&2; exit 1; }
+echo "slo report: ran"
+
 code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ops/queue -H 'X-API-Key: key-acme')
 [[ "$code" == "403" || "$code" == "401" ]] || { echo "tenant key reached /ops (got $code)" >&2; exit 1; }
 echo "tenant key on /ops/* -> $code (correctly refused)"
