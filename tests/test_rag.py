@@ -544,15 +544,23 @@ def test_the_query_is_deterministic():
 
 
 @pytest.mark.db
-def test_different_nights_retrieve_different_passages(db_engine):
-    """The claim, checked against the real index rather than against the string.
+def test_different_nights_retrieve_different_passages(db_session):
+    """The claim, checked against a real index rather than against the string.
 
-    Four water-balance states, four distinct passage sets. If this ever collapses
-    to one set, the queries have stopped discriminating and the retrieval layer is
+    Four water-balance states, and the passage sets must not all be identical. If
+    they collapse to one, the queries have stopped discriminating and retrieval is
     back to being an expensive constant.
+
+    Ingests into its own source and calls `search` directly rather than going
+    through `retrieve_for`, which reads the ambient DATABASE_URL and the production
+    `fao56` source. The first version did the latter and passed locally purely
+    because the corpus happened to be ingested on that machine -- CI, with an empty
+    database, retrieved nothing and said so.
     """
     from vinea.rag.queries import irrigation_query
+    from vinea.rag.store import ingest, search
 
+    ingest(db_session, corpus.load_corpus(), source="test-nights")
     states = {
         "past the trigger": _irrigation_features(),
         "comfortable": _irrigation_features(current_depletion_mm=5.0),
@@ -561,15 +569,14 @@ def test_different_nights_retrieve_different_passages(db_engine):
         ),
         "missing et0": _irrigation_features(skipped_et0_hours=9),
     }
-    retrieved = {
-        label: tuple(p.chunk_id for p in retrieve.retrieve_for("irrigation", irrigation_query(f)))
-        for label, f in states.items()
-    }
-    for label, chunks in retrieved.items():
-        assert chunks, f"{label} retrieved nothing; is the corpus ingested?"
+    retrieved = {}
+    for label, features in states.items():
+        hits = search(db_session, irrigation_query(features), source="test-nights", top_k=3)
+        assert hits, f"{label} retrieved nothing"
+        retrieved[label] = tuple(h.chunk_id for h in hits)
+
     assert len(set(retrieved.values())) > 1, (
-        "every state retrieved the same passages -- the query is not discriminating: "
-        f"{retrieved}"
+        f"every state retrieved the same passages -- the query is not discriminating: {retrieved}"
     )
 
 
