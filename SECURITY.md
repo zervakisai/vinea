@@ -13,9 +13,9 @@ there is no deployment to compromise. If you find that something claimed below i
 
 ## What actually protects an advisory
 
-The strongest control in this system was built in phase 2, for correctness rather
-than security, and it is worth naming first because everything else is defence in
-depth on top of it.
+The strongest control in this system was built for correctness rather than for
+security, and it is worth naming first because everything else is defence in depth
+on top of it.
 
 **An injected instruction has to produce a wrong advisory to matter, and the
 advisory's numbers are not the model's to invent.**
@@ -63,20 +63,20 @@ Enforced by Postgres row-level security (ADR-009), not by application code.
   policed directly; they reach a tenant only through `advisories.id`, with
   `ON DELETE CASCADE`. A leak there exposes a citation locator or a score, not a
   grower's advice.
-- API keys are a header-to-tenant mapping from the environment. That is phase
-  10's deliberate "simple for now", with OIDC as a marked seam. Keys are compared
+- API keys are a header-to-tenant mapping from the environment: a deliberate
+  "simple for now", with OIDC as a marked seam in `api/auth.py`. Keys are compared
   with `==`, not a constant-time compare — noted because the mapping lookup is
   already not constant-time and pretending otherwise would be worse.
 
 ## Untrusted text reaching a prompt
 
-Three paths, each added in a different phase for a good reason:
+Three paths, each added for a good reason by someone solving a different problem:
 
-| phase | path | trust |
-|---|---|---|
-| 6 | `grower_config.crop`, `.irrigation_method`, `.spray_sensitivity` | whoever may INSERT config |
-| 12 | Langfuse prompt templates, fetched `name@label` at run time | an operator of the self-hosted registry |
-| 15 | 798 retrieved FAO-56 passages, 60–73% of every prompt | FAO, CC BY 4.0 |
+| path | trust boundary |
+|---|---|
+| `grower_config.crop`, `.irrigation_method`, `.spray_sensitivity` | whoever may INSERT config |
+| Langfuse prompt templates, fetched `name@label` at run time | an operator of the self-hosted registry |
+| retrieved FAO-56 passages, the majority of every prompt | FAO, CC BY 4.0 |
 
 Controls:
 
@@ -96,8 +96,7 @@ Controls:
 - `.env` is gitignored; `.env.example` documents every variable by name.
 - The Helm chart never templates a `Secret`; it references one by name, and a
   test asserts no plaintext credential appears in rendered manifests.
-- Provider API keys live in the gateway's own Secret (phase 14), which app pods
-  cannot read. App pods hold a LiteLLM *virtual* key bounded by a spend ceiling.
+- Provider API keys live in the gateway's own Secret, which app pods cannot read. App pods hold a LiteLLM *virtual* key bounded by a spend ceiling.
 - The LiteLLM config is a ConfigMap and contains only `os.environ/NAME`
   references — a ConfigMap is readable by anyone with `get configmaps`.
 - `vinea_app` is `NOLOGIN`: a role with no password cannot have one leaked.
@@ -105,7 +104,7 @@ Controls:
 ## Dependency and image scanning
 
 CI fails on any known vulnerability. The gate is at **zero**, which is only
-holdable because phase 17 fixed what it found rather than filing it:
+holdable because the first scan's findings were fixed rather than filed:
 
 | package | advisories | arrived via | fix |
 |---|---|---|---|
@@ -115,8 +114,8 @@ holdable because phase 17 fixed what it found rather than filing it:
 
 Worth recording: **none of the nine shipped in the `app` image.** All three
 arrived through extras or the dev group that `--target app` does not install —
-which makes phase 13's per-provider extra split a security control as well as a
-size one, discovered rather than designed.
+which makes the per-provider extra split a security control as well as a size one
+-- discovered rather than designed.
 
 Two scanners, because they see different things:
 
