@@ -1,6 +1,6 @@
-"""The schema. Five core tables, and one deliberate counter-example.
+"""The schema, written as ADR-001: what cannot be recomputed is stored; what can is cache.
 
-This module is ADR-001 written as DDL. Read it as two lists:
+Read it as two lists:
 
   Cannot be recomputed, therefore stored
     weather_observations  what the sky actually did -- gone if we drop it

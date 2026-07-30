@@ -1,15 +1,15 @@
 # Security
 
-Vinea is a teaching repository. It is not a hosted service, holds no real
-grower's data, and ships no credentials. What follows is the security model it
-demonstrates, stated precisely enough to be checked — including where it is
-deliberately weaker than production would need.
+Vinea is not currently a hosted service: this repository holds no real grower's
+data and ships no credentials. What follows is the security model as built, stated
+precisely enough to be checked — including where it is deliberately weaker than a
+production deployment would need.
 
 ## Reporting
 
-Open a GitHub issue. There is no private disclosure channel and no bounty,
-because there is no deployment to compromise. If you find that something claimed
-below is *not true of the code*, that is the most useful report you can make.
+Open a GitHub issue. There is no private disclosure channel and no bounty, because
+there is no deployment to compromise. If you find that something claimed below is
+*not true of the code*, that is the most useful report you can make.
 
 ## What actually protects an advisory
 

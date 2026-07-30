@@ -109,7 +109,7 @@ def ops_session(
 app = FastAPI(
     title="Vinea Advisory API",
     summary="A thin layer over the advisory queue and store. It enqueues and reads; it never runs a model.",
-    version="0.1.0",
+    version="0.2.0",
 )
 
 # Routes whose latency is an SLO. Only these are timed.

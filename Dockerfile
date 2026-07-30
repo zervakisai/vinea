@@ -137,7 +137,7 @@ sys.exit(0 if r.status==200 and json.load(r).get('database')=='ok' else 1)"]
 
 # PORT is read here, in the CMD, and not in config.py -- keeping the
 # platform's injected variable out of `src/vinea/` is what lets phase 13 leave
-# the core untouched (see docs/phases/13-*.md, "The invariant").
+# the core untouched (see docs/engineering-log/13-*.md, "The invariant").
 CMD ["sh", "-c", "exec uvicorn vinea.api.main:app --host 0.0.0.0 --port ${PORT:-8000}"]
 
 # --------------------------------------------------------------------------- #

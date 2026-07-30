@@ -107,7 +107,7 @@ It is the document `src/vinea/features.py` implements. The FAO-56 water balance,
 Grounding an FAO-56 implementation in FAO-56 is the point — and it is also the
 hazard the phase is built around: **this corpus contains the constants the code
 computes with, and nothing retrieved from it is allowed to reach a computation.**
-See `docs/phases/15-rag-and-citations.md`.
+See `docs/engineering-log/15-rag-and-citations.md`.
 
 ## What was changed
 

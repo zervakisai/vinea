@@ -1,7 +1,16 @@
-# The phases
+# Engineering log
 
-Each phase is one tagged commit and one lesson. `git checkout phase-NN` gives you
-the project exactly as it stood there, and `uv run pytest` is green at every tag.
+How this system was built, in the order it was built, with the reasoning and the
+mistakes kept in. Eighteen entries, each one tagged commit: `git checkout phase-NN`
+gives you the project exactly as it stood there, and `uv run pytest` is green at
+every tag.
+
+**This is history, not documentation.** For how the system works now, read the
+[README](../../README.md), the [ADRs](../adr/) and the [runbooks](../runbooks/).
+Several decisions recorded here were later reversed — [ADR-011](../adr/011-lexical-retrieval-only.md)
+deleted the hybrid retrieval that entry 15 argues for, and the reversal is marked
+where it happened. Entries are not edited to look right in hindsight; the point of
+a log is that it records what was believed at the time.
 
 | # | Phase | Tag | Lesson |
 |---|---|---|---|
