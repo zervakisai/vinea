@@ -296,6 +296,19 @@ still 1. A webhook that is down can never fail the check — an alert path that 
 turn its own monitor red is worse than none, because the exit code stops meaning
 anything.
 
+### Human review
+
+The eval gate scores the model against the deterministic oracle, which proves the
+numbers are right and cannot prove the *advice* was good — that judgement needs an
+agronomist. `POST /advisories/{tenant}/{run_date}/annotations` records one
+(`agree` / `disagree` / `unclear`, per leg or overall, with the reason), and the UI
+puts the form directly under the advisory, because the moment someone disagrees
+with it is the moment they are looking at it. An agronomist judging correctness and
+a farmer judging clarity are recorded as different roles — they will disagree, and
+the disagreement is signal, not noise to average away. Reviewed disagreements are
+the pipeline that turns field experience into new golden eval cases
+(`promoted_to_golden` is a curation step, never automatic).
+
 ## Tracing
 
 One trace per advisory, showing the graph's node spans and the agents' model calls

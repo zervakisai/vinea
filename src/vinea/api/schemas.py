@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from vinea.contracts import DailyFarmAdvisory
 from vinea.db.models import Advisory, QueueDepthSample

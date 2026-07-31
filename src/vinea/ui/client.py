@@ -51,9 +51,12 @@ class ApiClient:
             f"{self.base_url}{path}", headers=headers, params=params, timeout=self.timeout
         )
 
-    def _post(self, path: str) -> httpx.Response:
+    def _post(self, path: str, *, json: dict | None = None) -> httpx.Response:
         return httpx.post(
-            f"{self.base_url}{path}", headers={"X-API-Key": self.tenant_key or ""}, timeout=self.timeout
+            f"{self.base_url}{path}",
+            headers={"X-API-Key": self.tenant_key or ""},
+            json=json,
+            timeout=self.timeout,
         )
 
     # --- grower views (tenant key) ------------------------------------------
@@ -83,6 +86,40 @@ class ApiClient:
 
     def enqueue(self, tenant: str, run_date: date) -> dict:
         r = self._post(f"/advisories/{tenant}/{run_date.isoformat()}")
+        r.raise_for_status()
+        return r.json()
+
+    def annotate(
+        self,
+        tenant: str,
+        run_date: date,
+        *,
+        reviewer_role: str,
+        reviewer_id: str,
+        verdict: str,
+        leg: str | None = None,
+        comment: str | None = None,
+    ) -> dict:
+        """Record a judgement. Through the API like everything else (ADR-005) --
+        the UI writing `annotations` directly would be the one door into the
+        database this app is not supposed to have."""
+        r = self._post(
+            f"/advisories/{tenant}/{run_date.isoformat()}/annotations",
+            json={
+                "reviewer_role": reviewer_role,
+                "reviewer_id": reviewer_id,
+                "verdict": verdict,
+                "leg": leg,
+                "comment": comment or None,
+            },
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def annotations(self, tenant: str, run_date: date) -> list[dict]:
+        r = self._get(f"/advisories/{tenant}/{run_date.isoformat()}/annotations")
+        if r.status_code == 404:
+            return []
         r.raise_for_status()
         return r.json()
 

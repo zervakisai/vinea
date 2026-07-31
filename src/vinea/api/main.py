@@ -32,6 +32,8 @@ from vinea.api import auth
 from vinea.api.schemas import (
     AdvisoryEnvelope,
     AdvisorySummary,
+    AnnotationCreate,
+    AnnotationRead,
     EnqueueResponse,
     HealthResponse,
     QueueDepthPoint,
@@ -297,6 +299,76 @@ def get_advisory(
     advisory = repository.get_advisory(session, tenant=tenant, run_date=run_date)
     citations = repository.get_citations(session, advisory_id=row.id)
     return AdvisoryEnvelope.from_row(row, advisory, citations)
+
+
+@app.post(
+    "/advisories/{tenant}/{run_date}/annotations",
+    response_model=AnnotationRead,
+    status_code=status.HTTP_201_CREATED,
+)
+def create_annotation(
+    run_date: date,
+    body: AnnotationCreate,
+    tenant: str = Depends(auth.scoped_tenant),
+    session: Session = Depends(tenant_session),
+) -> AnnotationRead:
+    """Record a human judgement about one advisory.
+
+    The `annotations` table has existed since the eval work and nothing had ever
+    written to it: the eval loop scores the model against the deterministic
+    oracle, which can say the numbers are *right* and cannot say the advice was
+    *good*. That judgement needs an agronomist, and an agronomist needs a door.
+
+    The advisory is looked up under the tenant-scoped session, so annotating
+    another tenant's advisory fails as *not found* -- RLS filters it before this
+    function can even learn it exists. The body carries no advisory_id for the
+    same reason: the URL is what was authorized, and an id in the body would be a
+    second, unchecked way to name the target.
+
+    404 for a missing advisory rather than accepting an orphan: feedback about an
+    advisory that was never produced is feedback about nothing, and the FK would
+    refuse it anyway -- this just turns a 500 into the true answer.
+    """
+    row = repository.get_advisory_row(session, tenant=tenant, run_date=run_date)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No advisory for tenant '{tenant}' on {run_date.isoformat()} to annotate.",
+        )
+    annotation = repository.save_annotation(
+        session,
+        advisory_id=row.id,
+        reviewer_role=body.reviewer_role,
+        reviewer_id=body.reviewer_id,
+        verdict=body.verdict,
+        leg=body.leg,
+        comment=body.comment,
+    )
+    session.commit()
+    return AnnotationRead.from_row(annotation)
+
+
+@app.get(
+    "/advisories/{tenant}/{run_date}/annotations",
+    response_model=list[AnnotationRead],
+)
+def list_annotations(
+    run_date: date,
+    tenant: str = Depends(auth.scoped_tenant),
+    session: Session = Depends(tenant_session),
+) -> list[AnnotationRead]:
+    """The judgements recorded so far, oldest first. Empty list, not 404, when
+    the advisory exists but nobody has spoken -- silence is a normal state."""
+    row = repository.get_advisory_row(session, tenant=tenant, run_date=run_date)
+    if row is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No advisory for tenant '{tenant}' on {run_date.isoformat()}.",
+        )
+    return [
+        AnnotationRead.from_row(a)
+        for a in repository.list_annotations(session, advisory_id=row.id)
+    ]
 
 
 @app.get("/advisories/{tenant}", response_model=list[AdvisorySummary])

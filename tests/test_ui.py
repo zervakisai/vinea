@@ -122,8 +122,8 @@ def api_client(committing_db, monkeypatch):
     def fake_get(url, headers=None, params=None, timeout=None):
         return test_client.get(url.replace("http://testserver", ""), headers=headers, params=params)
 
-    def fake_post(url, headers=None, timeout=None):
-        return test_client.post(url.replace("http://testserver", ""), headers=headers)
+    def fake_post(url, headers=None, json=None, timeout=None):
+        return test_client.post(url.replace("http://testserver", ""), headers=headers, json=json)
 
     monkeypatch.setattr(client_mod.httpx, "get", fake_get)
     monkeypatch.setattr(client_mod.httpx, "post", fake_post)
@@ -272,8 +272,8 @@ def app_test_env(committing_db, monkeypatch):
     monkeypatch.setattr(
         client_mod.httpx,
         "post",
-        lambda url, headers=None, timeout=None: test_client.post(
-            url.replace("http://testserver", ""), headers=headers
+        lambda url, headers=None, json=None, timeout=None: test_client.post(
+            url.replace("http://testserver", ""), headers=headers, json=json
         ),
     )
 

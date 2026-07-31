@@ -36,6 +36,7 @@ def render(client: ApiClient) -> None:
         return
 
     _advisory_card(envelope)
+    _feedback(client, tenant, run_date)
 
 
 def _advisory_card(envelope: dict) -> None:
@@ -105,3 +106,54 @@ def _advisory_card(envelope: dict) -> None:
     if trace_id:
         st.link_button("🔎 View trace in Langfuse", langfuse_trace_url(trace_id))
     st.caption(f"model: {envelope.get('model_id') or '—'} · prompt: {envelope.get('prompt_version') or '—'}")
+
+
+def _feedback(client: ApiClient, tenant: str, run_date) -> None:
+    """The judgement the eval loop cannot make, collected where the advisory is read.
+
+    The oracle can say the numbers are right; only a person can say the advice was
+    good. A separate review tool would be a place nobody visits -- the form lives
+    under the advisory because the moment someone disagrees with it is the moment
+    they are looking at it.
+
+    Writes through the API like every other interaction here (ADR-005). The verdict
+    and role are the closed sets the schema enforces; free text is bounded by the
+    API, not trusted here.
+    """
+    st.divider()
+    st.subheader("Was this advice right?")
+    existing = client.annotations(tenant, run_date)
+    if existing:
+        for a in existing:
+            icon = {"agree": "✅", "disagree": "❌", "unclear": "❓"}.get(a["verdict"], "•")
+            scope = a["leg"] or "overall"
+            golden = "  ⭐ golden" if a.get("promoted_to_golden") else ""
+            st.caption(
+                f"{icon} **{a['reviewer_id']}** ({a['reviewer_role']}) on *{scope}*: "
+                f"{a.get('comment') or a['verdict']}{golden}"
+            )
+
+    with st.form("annotation", clear_on_submit=True):
+        c1, c2, c3 = st.columns(3)
+        role = c1.selectbox("I am the", ["agronomist", "farmer"])
+        verdict = c2.selectbox("Verdict", ["agree", "disagree", "unclear"])
+        leg = c3.selectbox("About", ["overall", "irrigation", "spray", "reconciliation"])
+        reviewer = st.text_input("Your name", max_chars=120)
+        comment = st.text_area(
+            "Why? (a 'disagree' with no reason cannot become a golden case)", max_chars=2000
+        )
+        if st.form_submit_button("Record judgement"):
+            if not reviewer.strip():
+                st.error("A judgement needs a name behind it.")
+            else:
+                client.annotate(
+                    tenant,
+                    run_date,
+                    reviewer_role=role,
+                    reviewer_id=reviewer.strip(),
+                    verdict=verdict,
+                    leg=None if leg == "overall" else leg,
+                    comment=comment.strip() or None,
+                )
+                st.success("Recorded. Disagreements feed the golden eval set.")
+                st.rerun()
