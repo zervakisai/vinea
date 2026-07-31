@@ -23,6 +23,32 @@ CLEANUP=0
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 
+# Run a one-shot pod and return ONLY its stdout.
+#
+# `kubectl run --rm -i` is the obvious way and it is unreliable: the attach can
+# miss output written before it connects, and `--rm` prints its own
+# `pod "x" deleted` line to stdout, which a caller capturing "$(...)" then parses
+# as the program's output. That is exactly what happened -- an assertion read the
+# deletion message, found none of what it wanted, and failed a correct deploy.
+#
+# Run detached, wait for the phase, read the logs, then delete. Three more lines,
+# and the output is the output.
+in_cluster() {
+  local name="$1"; shift
+  kubectl delete pod "$name" --ignore-not-found --wait=true >/dev/null 2>&1
+  kubectl run "$name" --restart=Never --image=vinea:e2e --image-pull-policy=Never \
+    --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
+    --command -- "$@" >/dev/null 2>&1
+  if ! kubectl wait --for=jsonpath='{.status.phase}'=Succeeded "pod/$name" --timeout=240s >/dev/null 2>&1; then
+    echo "--- $name did not succeed; logs follow ---" >&2
+    kubectl logs "pod/$name" >&2 2>/dev/null || true
+    kubectl delete pod "$name" --ignore-not-found >/dev/null 2>&1
+    return 1
+  fi
+  kubectl logs "pod/$name" 2>/dev/null
+  kubectl delete pod "$name" --ignore-not-found >/dev/null 2>&1
+}
+
 # `return 0` is load-bearing, and its absence cost a red CI run on a script that
 # printed PASS. Written as `[[ $CLEANUP -eq 1 ]] && { ... }`, this function
 # returns 1 whenever CLEANUP is 0 -- and because it is the last command of the
@@ -91,12 +117,8 @@ kubectl get job -l app.kubernetes.io/component=migrate \
 echo "migration job: succeeded"
 
 step "assert: alembic is actually at head"
-# Capture, then assert: `kubectl run -i | grep -q` can lose the tail of the
-# output to attach timing, which turned this into a soft check that always fell
-# through to its fallback. Hard assert on the captured text instead.
-revision=$(kubectl run alembic-check --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- alembic current 2>/dev/null || true)
+# Capture, then assert -- never `| grep -q` straight off a pod. See `in_cluster`.
+revision=$(in_cluster alembic-check alembic current)
 echo "$revision" | grep -q "(head)" \
   || { echo "schema is not at head: ${revision:-<no output>}" >&2; exit 1; }
 echo "alembic: at head ($(echo "$revision" | grep -o '^[0-9a-f]*' | head -1))"
@@ -122,16 +144,14 @@ step "assert: the expand migration added the cost columns"
 # The pre-upgrade hook ran (asserted above); this asserts what it *did*. Four
 # additive nullable columns, and the nullability is the claim: a server_default
 # would make every advisory written before tonight report that it cost zero.
-columns=$(kubectl run cost-columns --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- python -c "
+columns=$(in_cluster cost-columns python -c "
 import os
 from sqlalchemy import create_engine, text
 e = create_engine(os.environ['DATABASE_URL'])
 with e.connect() as c:
     rows = c.execute(text(\"select column_name, is_nullable, column_default from information_schema.columns where table_name='advisories' and column_name in ('input_tokens','output_tokens','cost_usd','cache_hit') order by column_name\")).all()
 print(';'.join(f'{n}:{null}:{default}' for n, null, default in rows))
-" 2>/dev/null || true)
+")
 for col in cache_hit cost_usd input_tokens output_tokens; do
   echo "$columns" | grep -q "${col}:YES:None" \
     || { echo "cost column ${col} missing or not nullable-without-default: ${columns:-<no output>}" >&2; exit 1; }
@@ -144,9 +164,7 @@ step "assert: the vector extension and corpus tables exist"
 # does not. Asserting it here is asserting that the test fixture, the compose
 # stack and any real cluster are all running an image that carries it, which is a
 # deployment fact no unit test can reach.
-schema=$(kubectl run vector-check --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- python -c "
+schema=$(in_cluster vector-check python -c "
 from sqlalchemy import create_engine, text
 import os
 e = create_engine(os.environ['DATABASE_URL'])
@@ -155,7 +173,7 @@ with e.connect() as c:
     cols = c.execute(text(\"select count(*) from information_schema.columns where table_name='corpus_chunks'\")).scalar_one()
     cites = c.execute(text(\"select count(*) from information_schema.columns where table_name='advisory_citations'\")).scalar_one()
 print(f'vector={bool(ext)} corpus_chunks_cols={cols} advisory_citations_cols={cites}')
-" 2>/dev/null || true)
+")
 echo "$schema" | grep -q "vector=True" \
   || { echo "pgvector extension missing: ${schema:-<no output>}" >&2; exit 1; }
 echo "$schema" | grep -qE "corpus_chunks_cols=(9|10|11)" \
@@ -167,9 +185,7 @@ step "assert: row-level security is real in the cluster"
 # of the RLS migration reported while being completely inert -- the connecting
 # role was a superuser, and superusers bypass row security unconditionally. So
 # this checks the role AND counts rows from a query with no tenant filter.
-rls=$(kubectl run rls-check --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- python -c "
+rls=$(in_cluster rls-check python -c "
 from sqlalchemy import text
 from sqlmodel import Session, select
 from vinea.db.models import Advisory
@@ -188,7 +204,7 @@ with Session(e) as s:
 with Session(e) as s:
     unscoped = s.exec(select(Advisory)).all()
 print(f'user={user} super={sup} bypass={byp} scoped={sorted(scoped)} unscoped={len(unscoped)}')
-" 2>/dev/null || true)
+")
 echo "$rls" | grep -q "user=vinea_app super=False bypass=False" \
   || { echo "app role is not restricted: ${rls:-<no output>}" >&2; exit 1; }
 echo "$rls" | grep -q "scoped=\['rls-a'\]" \
@@ -196,6 +212,80 @@ echo "$rls" | grep -q "scoped=\['rls-a'\]" \
 echo "$rls" | grep -q "unscoped=0" \
   || { echo "an unscoped session was not fail-closed: ${rls:-<no output>}" >&2; exit 1; }
 echo "rls: $rls"
+
+step "assert: the image can find its own data"
+# The guard that would have caught a bug which shipped for eighteen phases.
+# `config.DEFAULT_DATA_DIR` falls back to a path derived from the module location,
+# which is the repo root for a source checkout and a directory inside the venv for
+# the wheel this image installs. Nothing noticed, because the two things that read
+# it -- the worker's CSV fallback and the corpus ingest -- had never run in a
+# cluster. Cheap to check, and it fails loudly instead of as an IndexError.
+paths=$(in_cluster data-paths python -c "
+from vinea import config
+from vinea.rag.corpus import CORPUS_PATH
+print(f'data={config.DEFAULT_DATA_DIR} exists={config.DEFAULT_DATA_DIR.exists()} corpus={CORPUS_PATH.exists()} csvs={len(sorted(config.DEFAULT_DATA_DIR.glob(chr(42)+chr(46)+\"csv\")))}')
+")
+echo "$paths" | grep -q "exists=True" || { echo "the image cannot find its data dir: ${paths:-<no output>}" >&2; exit 1; }
+echo "$paths" | grep -q "corpus=True"  || { echo "the image cannot find the corpus: ${paths:-<no output>}" >&2; exit 1; }
+echo "paths: $paths"
+
+step "assert: two tenants with different weather get different advisories"
+# The gap this closes was structural: the worker read one weather file for every
+# tenant, so ten growers got ten identical advisories. Checked here rather than only
+# in unit tests because it depends on grower_config, weather_observations, the queue
+# and the worker agreeing in a real deploy.
+#
+# Robust to network either way: if the Open-Meteo fetch succeeds, the two sites are
+# genuinely different weather; if it fails, the seeded rows are. Both paths must
+# produce different depletions.
+tenants=$(in_cluster two-tenants python -c "
+from datetime import date
+from pathlib import Path
+from sqlmodel import Session
+from vinea import config
+from vinea.db import repository
+from vinea.db.session import make_engine, scope_to_ops
+from vinea.deps import WINE_GRAPES
+from vinea.ingest import load_weather
+from vinea.jobs import queue, worker
+from vinea.sources.db_source import API_SOURCE
+from vinea.sources.persist import upsert_observations
+
+RUN = date(2026, 7, 28)
+SITES = {'e2e-nemea': (37.8125, 22.6875, 1.0), 'e2e-naoussa': (40.63, 22.07, 0.45)}
+d = Path(config.DEFAULT_DATA_DIR)
+hist, fc, _ = load_weather(sorted(d.glob('*last-30d*.csv'))[-1], sorted(d.glob('*next-7d*.csv'))[-1], RUN)
+eng = make_engine()
+with Session(eng) as s:
+    scope_to_ops(s)
+    for tenant, (lat, lon, scale) in SITES.items():
+        row = repository.save_grower_config(s, WINE_GRAPES, tenant=tenant, location='block-a', region='eu')
+        row.latitude, row.longitude = lat, lon
+        s.add(row)
+        for kind, rows in (('history', hist), ('forecast', fc)):
+            scaled = [r if r.et0_mm is None else r.model_copy(update={'et0_mm': r.et0_mm * scale}) for r in rows]
+            upsert_observations(s, scaled, tenant=tenant, location='block-a', kind=kind, source=API_SOURCE)
+        queue.enqueue(s, tenant=tenant, run_date=RUN)
+    s.commit()
+for _ in SITES:
+    with Session(eng) as s:
+        scope_to_ops(s)
+        worker.process_one(s, queue.claim_one(s, worker_id='e2e'))
+out = []
+with Session(eng) as s:
+    scope_to_ops(s)
+    for tenant in SITES:
+        a = repository.get_advisory(s, tenant=tenant, run_date=RUN)
+        out.append(f'{tenant}={a.irrigation.current_depletion_mm:.1f}' if a else f'{tenant}=MISSING')
+print(' '.join(out))
+")
+echo "tenants: $tenants"
+echo "$tenants" | grep -q "MISSING" && { echo "a tenant produced no advisory" >&2; exit 1; }
+a=$(echo "$tenants" | sed -n 's/.*e2e-nemea=\([0-9.]*\).*/\1/p')
+b=$(echo "$tenants" | sed -n 's/.*e2e-naoussa=\([0-9.]*\).*/\1/p')
+[[ -n "$a" && -n "$b" ]] || { echo "could not parse depletions from: $tenants" >&2; exit 1; }
+[[ "$a" != "$b" ]] || { echo "both tenants got depletion $a -- one weather source for everybody" >&2; exit 1; }
+echo "per-tenant weather: nemea=$a naoussa=$b (differ, correct)"
 
 step "smoke test THROUGH the API, with a real key"
 # Not `curl /health`. A smoke test that proves a container started is theatre --
@@ -224,9 +314,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/advisories/acme/20
 echo "GET /advisories/acme/2026-07-28 -> $code"
 
 step "assert: the read was timed into api_request_samples"
-samples=$(kubectl run slo-check --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- python -c "
+samples=$(in_cluster slo-check python -c "
 from sqlalchemy import text
 from sqlmodel import Session
 from vinea.db.session import make_engine, scope_to_ops
@@ -236,15 +324,13 @@ with Session(make_engine()) as s:
     n = s.execute(text('SELECT count(*) FROM api_request_samples WHERE route = :r'), {'r': SLO_READ_ROUTE}).scalar_one()
     r = read_latency_p95(s)
 print(f'samples={n} p95={r.value} met={r.met}')
-" 2>/dev/null || true)
+")
 echo "$samples" | grep -qE "samples=[1-9]" \
   || { echo "the read was not timed: ${samples:-<no output>}" >&2; exit 1; }
 echo "latency: $samples"
 
 step "assert: the SLO check runs and reports"
-kubectl run slo-cmd --rm -i --restart=Never --image=vinea:e2e \
-  --image-pull-policy=Never --env="DATABASE_URL=postgresql+psycopg://vinea:vinea@postgres:5432/vinea" \
-  --command -- python -m vinea.slo report >/dev/null 2>&1 \
+in_cluster slo-cmd python -m vinea.slo report >/dev/null \
   || { echo "python -m vinea.slo report failed" >&2; exit 1; }
 echo "slo report: ran"
 

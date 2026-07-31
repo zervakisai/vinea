@@ -25,6 +25,7 @@ is nullable for that reason -- a column that arrives empty is honest.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -46,6 +47,8 @@ from vinea.jobs.router import Route, route_for
 from vinea.obs.instrumented import run_advisory_instrumented
 from vinea.sources.csv_source import CsvSource
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ProcessResult:
@@ -65,6 +68,30 @@ def _primary_location(session: Session, tenant: str) -> str:
     return loc or "default"
 
 
+def _coordinates(session: Session, *, tenant: str, location: str) -> tuple[float, float] | None:
+    """Where this block is, or None if nobody said.
+
+    Read from the same open config row the thresholds come from, so a tenant is
+    configured in one place. None means the tenant predates the columns or was
+    seeded without them, and the caller falls back to the bundled capture with a
+    note -- not to a guessed coordinate, which would place a grower's vineyard
+    somewhere it is not.
+    """
+    row = session.exec(
+        select(GrowerConfig.latitude, GrowerConfig.longitude).where(
+            GrowerConfig.tenant == tenant,
+            GrowerConfig.location == location,
+            GrowerConfig.valid_to.is_(None),
+        )
+    ).first()
+    if row is None:
+        return None
+    latitude, longitude = row
+    if latitude is None or longitude is None:
+        return None
+    return float(latitude), float(longitude)
+
+
 def _resolve_deps(session: Session, *, tenant: str) -> Deps:
     """The Deps for a tenant's block, from grower_config, or the default.
 
@@ -80,21 +107,116 @@ def _resolve_deps(session: Session, *, tenant: str) -> Deps:
     return deps or WINE_GRAPES
 
 
-def _load_weather(run_date: date) -> WeatherLoadResult:
-    """Load this tenant's weather for the run.
+HISTORY_DAYS = 30
+FORECAST_DAYS = 7
 
-    The batch reads the bundled CSV fixtures as its weather source, so the queue is
-    exercisable end to end offline. A production worker would read
-    `weather_observations` for the tenant (populated by S2's `--source api`); that
-    swap is a one-function change behind the same WeatherLoadResult, exactly the
-    `WeatherSource` seam. Kept as CSV here so the tests never need a live feed.
+# How long the nightly fetch may take per tenant before the worker gives up and
+# uses what is already stored. Generous next to an HTTP call and small next to the
+# task deadline: ten tenants timing out still leaves the batch inside its window.
+FETCH_TIMEOUT_SECONDS = 20.0
+
+
+def _refresh_observations(
+    session: Session, *, tenant: str, location: str, coordinates: tuple[float, float], run_date: date
+) -> str | None:
+    """Fetch this block's weather and persist it. Returns a note on failure, else None.
+
+    Fetch, persist, and let the caller read back from the database. The indirection
+    is what makes a retry cheap: a task retried three times would otherwise hit the
+    provider three times for hours it already has, and rate limits are a worse
+    failure than staleness.
+
+    Never raises. A provider outage at 02:00 must not fail a night -- there is
+    almost certainly yesterday's data in the table, the advisory built from it
+    carries a staleness penalty, and the grower gets real physics on slightly old
+    numbers. That is the correct degrade, and the note is how it reaches the
+    advisory instead of only a log line.
     """
+    import httpx
+
+    from vinea.sources.db_source import API_SOURCE
+    from vinea.sources.open_meteo import OpenMeteoSource
+    from vinea.sources.persist import upsert_observations
+
+    latitude, longitude = coordinates
+    try:
+        with httpx.Client(timeout=FETCH_TIMEOUT_SECONDS) as client:
+            fetched = OpenMeteoSource(client=client).load(
+                latitude=latitude,
+                longitude=longitude,
+                history_days=HISTORY_DAYS,
+                forecast_days=FORECAST_DAYS,
+                run_date=run_date,
+            )
+    except Exception as exc:  # noqa: BLE001 -- a feed outage is not a failed night
+        logger.warning(
+            "weather fetch failed for %s/%s: %s: %s", tenant, location, type(exc).__name__, exc
+        )
+        return f"weather feed unreachable ({type(exc).__name__}); using stored observations"
+
+    for kind, rows in (("history", fetched.history), ("forecast", fetched.forecast)):
+        upsert_observations(
+            session, rows, tenant=tenant, location=location, kind=kind, source=API_SOURCE
+        )
+    return None
+
+
+def _load_weather(
+    session: Session,
+    *,
+    tenant: str,
+    location: str,
+    run_date: date,
+) -> tuple[WeatherLoadResult, tuple[str, ...]]:
+    """This block's weather, and any notes about where it came from.
+
+    Three rungs, and which one ran is visible on the advisory rather than only in a
+    log:
+
+      1. **Coordinates configured** -> refresh from the provider, then read
+         `weather_observations` for this exact (tenant, location).
+      2. **Fetch failed but rows exist** -> read them anyway. Staleness lowers
+         confidence on its own; there is no need to fail a night over it.
+      3. **No coordinates, or nothing stored** -> the bundled capture, with a note
+         saying so.
+
+    Rung 3 is why the demo keeps working and why a newly-created tenant produces an
+    advisory on its first night instead of an error. It is also the rung that used
+    to be the *only* one, which meant every tenant was advised from one vineyard's
+    weather.
+    """
+    from vinea.sources.db_source import DbSource
+
+    notes: list[str] = []
+    coordinates = _coordinates(session, tenant=tenant, location=location)
+
+    if coordinates is not None:
+        note = _refresh_observations(
+            session, tenant=tenant, location=location, coordinates=coordinates, run_date=run_date
+        )
+        if note:
+            notes.append(note)
+
+        db_source = DbSource(
+            session,
+            tenant=tenant,
+            location=location,
+            staleness_threshold_hours=config.STALENESS_THRESHOLD_HOURS,
+        )
+        if db_source.has_rows(run_date=run_date, history_days=HISTORY_DAYS):
+            return db_source.load(run_date=run_date, history_days=HISTORY_DAYS,
+                                  forecast_days=FORECAST_DAYS), tuple(notes)
+        notes.append("no stored observations for this block; using the bundled capture")
+    else:
+        notes.append("no coordinates configured for this block; using the bundled capture")
+
     data_dir = config.DEFAULT_DATA_DIR
     history = sorted(Path(data_dir).glob("*last-30d*.csv"))[-1]
     forecast = sorted(Path(data_dir).glob("*next-7d*.csv"))[-1]
-    return CsvSource(
+    result = CsvSource(
         history, forecast, staleness_threshold_hours=config.STALENESS_THRESHOLD_HOURS
     ).load(run_date=run_date)
+    return result, tuple(notes)
 
 
 def process_one(
@@ -112,7 +234,19 @@ def process_one(
     """
     try:
         deps = _resolve_deps(session, tenant=task.tenant)
-        load_result = _load_weather(task.run_date)
+        location = _primary_location(session, task.tenant)
+        load_result, source_notes = _load_weather(
+            session, tenant=task.tenant, location=location, run_date=task.run_date
+        )
+        if source_notes:
+            # Onto the quality verdict, which is what the agents read.
+            load_result = WeatherLoadResult(
+                history=load_result.history,
+                forecast=load_result.forecast,
+                quality=load_result.quality.model_copy(
+                    update={"notes": [*load_result.quality.notes, *source_notes]}
+                ),
+            )
         features = build_features(
             list(load_result.history),
             list(load_result.forecast),
@@ -170,6 +304,18 @@ def process_one(
                     cost = instrumented.cost
                     passages = instrumented.passages
                     route, degraded, model_id = "large_model", False, model
+
+        if source_notes:
+            # And onto the advisory itself, which is the only place a grower looks.
+            #
+            # Putting them only on `DataQuality` was not enough: a caveat is
+            # rendered from the confidence *penalty*, and "the numbers came from
+            # somewhere else" carries no penalty -- the data may be perfectly good,
+            # it is simply not this block's. So the note was recorded and never
+            # shown, which is the failure mode this whole change exists to fix.
+            advisory = advisory.model_copy(
+                update={"summary": advisory.summary + "\n[source — " + "; ".join(source_notes) + "]"}
+            )
 
         # Persist advisory and mark the task done in ONE transaction, so the two
         # land together (queue.mark_done does not commit).

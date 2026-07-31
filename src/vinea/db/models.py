@@ -204,6 +204,17 @@ class GrowerConfig(SQLModel, table=True):
     # column, and a fabricated local time would silently move every SLI. Empty
     # means "we do not know this grower's morning", and the SLI says so.
     timezone: str | None = Field(default=None, sa_column=Column(Text))
+    # Where this block actually is. Without these every tenant was advised from
+    # whatever weather the worker happened to load, which for a single-site demo is
+    # invisible and for two tenants is wrong: identical advisories for different
+    # vineyards.
+    #
+    # Nullable, and a tenant without them falls back to the bundled capture with a
+    # note on the advisory rather than being skipped -- the demo has to keep working,
+    # and a silently omitted tenant is worse than one that says where its numbers
+    # came from.
+    latitude: float | None = Field(default=None, sa_column=Column(Float))
+    longitude: float | None = Field(default=None, sa_column=Column(Float))
 
     # deps.Deps, field for field (tuples flattened). raw_mm intentionally absent.
     crop: str = Field(sa_column=Column(Text, nullable=False))

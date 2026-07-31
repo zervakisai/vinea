@@ -20,6 +20,13 @@ except Exception:  # pragma: no cover - defensive only
 # .../src/vinea/config.py -> parents[2] == project root (works for the editable/src layout).
 PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
 
+# `VINEA_DATA_DIR` is authoritative; the fallback only works for a source checkout.
+#
+# PROJECT_ROOT above is `parents[2]`, which is the repository root when this file
+# lives at `src/vinea/config.py` and is `.venv/lib/pythonX.Y` when the package is
+# installed as a wheel -- so an installed deployment MUST set VINEA_DATA_DIR. The
+# Dockerfile does. A packaging that forgets gets a path that does not exist, and
+# `sorted(dir.glob(...))[-1]` raises IndexError somewhere far from the cause.
 DEFAULT_DATA_DIR: Path = Path(os.getenv("VINEA_DATA_DIR", PROJECT_ROOT / "data"))
 
 # Any Pydantic AI model string ("provider:model"). The provider key is read from the env

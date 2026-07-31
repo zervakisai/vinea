@@ -163,6 +163,7 @@ not interact and the data is clean.
 | `features.py`, `contracts.py`, `deps.py` | the agronomy, and the typed contracts around it |
 | `graph.py`, `agents.py`, `reconcile.py` | three agents, their validators, the conflict facts |
 | `db/`, `migrations/` | Postgres: advisories, weather, config, the queue, the corpus |
+| `sources/` | `WeatherSource` adapters: CSV, Open-Meteo, and the database |
 | `jobs/` | the overnight batch: `SELECT … FOR UPDATE SKIP LOCKED`, retries, reaper |
 | `api/` | FastAPI. Enqueues and reads; never runs a model |
 | `ui/` | Streamlit, over HTTP only |
@@ -209,6 +210,14 @@ above are checkable, and neither is true if the data has to be fetched first.
 Weather by [Open-Meteo](https://open-meteo.com/) (**CC BY 4.0**), Nemea, Corinthia,
 captured 2026-07-28 — 720 history rows, 168 forecast rows, no missing cells.
 `scripts/fetch_dataset.py` is the exact call that produced them.
+
+Each tenant's own weather lives in `weather_observations`, keyed by
+`(tenant, location)`. The nightly worker fetches for that block's coordinates
+(`grower_config.latitude/longitude`), persists, and reads back — so a retry costs a
+`SELECT` rather than another API call, and re-running a night reproduces the same
+advisory instead of whatever the provider is serving now. A tenant without
+coordinates falls back to the bundled capture, and the advisory says so on its own
+summary rather than only in a log.
 
 `data/corpus/` holds 798 passages of **FAO Irrigation and Drainage Paper 56**
 (CC BY 4.0, [doi:10.4060/cd6621en](https://doi.org/10.4060/cd6621en)) for citations.
@@ -355,7 +364,7 @@ dense half was deleted and the image lost 258 MB.
 src/vinea/  features · contracts · deps · reconcile     the agronomy
             graph · agents · pipeline · cli             agents and wiring
             db/       schema, mapping, repository, RLS scoping
-            sources/  WeatherSource protocol, CSV + Open-Meteo
+            sources/  WeatherSource protocol: CSV, Open-Meteo, database
             jobs/     queue, scheduler, worker, degraded path
             obs/      tracing, instrumented run
             api/      FastAPI, auth, schemas

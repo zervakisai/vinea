@@ -97,7 +97,15 @@ WORKDIR /app
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    PYTHONDONTWRITEBYTECODE=1
+    PYTHONDONTWRITEBYTECODE=1 \
+    # Where data/ landed in this image. Load-bearing, not decoration.
+    #
+    # config.DEFAULT_DATA_DIR falls back to `Path(__file__).parents[2] / "data"`,
+    # which is the repository root for an editable src/ install and
+    # `.venv/lib/pythonX.Y/data` for the wheel this image installs -- a path that
+    # does not exist. Nothing noticed because the two things that read it, the
+    # worker's CSV fallback and the corpus ingest, had never run in a cluster.
+    VINEA_DATA_DIR=/app/data
 
 # Migrations ship in the image, because the migration hook (phase 13) runs
 # `alembic upgrade head` from this same artifact -- the schema and the code that

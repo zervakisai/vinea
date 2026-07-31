@@ -348,3 +348,25 @@ def test_langfuse_is_not_vendored_into_this_chart():
     rendered = _render("langfuse.host=http://example:3000")
     for foreign in ("clickhouse", "langfuse/langfuse", "minio"):
         assert foreign not in rendered.lower(), f"{foreign} is being deployed by this chart"
+
+
+def test_the_dockerfile_declares_where_its_data_lives():
+    """`VINEA_DATA_DIR` in the image is load-bearing, not decoration.
+
+    `config.DEFAULT_DATA_DIR` falls back to `Path(__file__).parents[2] / "data"`,
+    which is the repository root for an editable `src/` install and a directory
+    *inside the venv* for the wheel the image installs. That path does not exist,
+    and the failure surfaces as `IndexError: list index out of range` from a glob
+    several call frames away.
+
+    It shipped undetected because the two readers -- the worker's CSV fallback and
+    the corpus ingest -- had never run in a cluster. This is the cheap guard; the
+    e2e checks the built image itself.
+    """
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text()
+    assert "VINEA_DATA_DIR=/app/data" in dockerfile, (
+        "the image installs a wheel, so it must declare its data directory"
+    )
+    assert "COPY --chown=vinea:vinea data/ ./data/" in dockerfile, (
+        "VINEA_DATA_DIR points at /app/data; something has to put the files there"
+    )
