@@ -1,9 +1,9 @@
 # Engineering log
 
 How this system was built, in the order it was built, with the reasoning and the
-mistakes kept in. Eighteen entries, each one tagged commit: `git checkout phase-NN`
-gives you the project exactly as it stood there, and `uv run pytest` is green at
-every tag.
+mistakes kept in. Each entry is a tagged commit: `git checkout phase-NN` (or a
+release tag, from 19 on) gives you the project exactly as it stood there, and
+`uv run pytest` is green at every tag.
 
 **This is history, not documentation.** For how the system works now, read the
 [README](../../README.md), the [ADRs](../adr/) and the [runbooks](../runbooks/).
@@ -32,6 +32,7 @@ a log is that it records what was believed at the time.
 | 16 | Context engineering | `phase-16` | [16](16-context-engineering.md) |
 | 17 | Security hardening | `phase-17` | [17](17-security-hardening.md) |
 | 18 | SLOs & operations | `phase-18` | [18](18-slos-and-operations.md) |
+| 19 | Closing the gaps | `v0.3.0` | [19](19-closing-the-gaps.md) |
 
 ## How to read this
 

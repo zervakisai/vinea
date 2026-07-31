@@ -8,14 +8,17 @@ if any model were touched, and returns a 202 with a task id before an advisory
 exists.
 
 Routes:
-  GET  /health                              liveness: is this process answering?
-  GET  /ready                               readiness: can it serve? 503 if not
-  POST /advisories/{tenant}/{run_date}      enqueue; 202 + task handle
-  GET  /advisories/{tenant}/{run_date}      one advisory + provenance
-  GET  /advisories/{tenant}?from=&to=       history summaries
-  GET  /ops/queue                           queue depth (ops key)
-  GET  /ops/queue/history                   queue depth over time (ops key)
-  GET  /ops/advisories                      cross-tenant summaries (ops key)
+  GET  /health                                        liveness: is this process answering?
+  GET  /ready                                         readiness: can it serve? 503 if not
+  POST /advisories/{tenant}/{run_date}                enqueue; 202 + task handle
+  GET  /advisories/{tenant}/{run_date}                one advisory + provenance
+  POST /advisories/{tenant}/{run_date}/annotations    record a human judgement
+  GET  /advisories/{tenant}/{run_date}/annotations    the judgements so far
+  GET  /advisories/{tenant}?from=&to=                 history summaries
+  GET  /ops/queue                                     queue depth (ops key)
+  GET  /ops/queue/history                             queue depth over time (ops key)
+  GET  /ops/advisories                                cross-tenant summaries (ops key)
+  GET  /ops/slo                                       the objectives, measured (ops key)
 """
 
 from __future__ import annotations
@@ -132,7 +135,7 @@ def ops_session(
 app = FastAPI(
     title="Vinea Advisory API",
     summary="A thin layer over the advisory queue and store. It enqueues and reads; it never runs a model.",
-    version="0.2.0",
+    version="0.3.0",
 )
 
 # Routes whose latency is an SLO. Only these are timed.

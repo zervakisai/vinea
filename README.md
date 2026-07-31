@@ -359,7 +359,7 @@ not do.
 ## Testing
 
 ```bash
-uv run pytest        # 199 passed, 103 skipped — the skips need Postgres
+uv run pytest        # 216 passed, 148 skipped — the skips need Postgres
 uv run ruff check .
 ```
 
@@ -373,9 +373,9 @@ live service:
 
 | what is running | result |
 |---|---|
-| nothing | 199 passed, 103 skipped |
-| Postgres | 303 passed, 4 skipped |
-| Postgres + Langfuse | 306 passed, 1 skipped *(the last needs an LLM gateway)* |
+| nothing | 216 passed, 148 skipped |
+| Postgres | 360 passed, 4 skipped |
+| Postgres + Langfuse | 363 passed, 1 skipped *(the last needs an LLM gateway)* |
 
 CI starts Postgres and gets no database skips.
 

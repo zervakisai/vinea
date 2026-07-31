@@ -1,6 +1,6 @@
 [project]
 name = "vinea"
-version = "0.2.0"
+version = "0.3.0"
 description = "Daily irrigation and spray advisories for vineyards, from hourly weather"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
