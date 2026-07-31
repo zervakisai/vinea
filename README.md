@@ -3,6 +3,14 @@
 **Should I irrigate? Can I spray?** — a daily, grower-facing advisory for tomorrow,
 produced overnight from hourly vineyard weather.
 
+### ▶ [Try it — a month of real advisories](https://zervakisai.github.io/vinea-demo.html)
+
+Two real Greek wine regions, thirty nights each. Pick a site, drag the date, and open
+*Check the arithmetic* — every figure was computed by `features.py`, and the page
+shows the working so you can verify the headline by hand.
+
+---
+
 Every night the system computes a FAO-56 water balance and a spray-window analysis
 for each block, then uses a small graph of LLM agents to judge the borderline calls,
 sequence the day, and explain itself in language a vineyard manager can act on. The
@@ -439,7 +447,8 @@ src/vinea/  features · contracts · deps · reconcile     the agronomy
             slo/      objectives, SLIs in SQL, error budgets, the breach webhook
             security.py  bounded free text (not an injection filter)
 data/       two CSVs + corpus/ + ATTRIBUTION.md
-scripts/    fetch_dataset.py · fetch_corpus.py · measure_retrieval.py
+site/       the static demo's data (see scripts/export_demo.py)
+scripts/    fetch_dataset.py · fetch_corpus.py · measure_retrieval.py · export_demo.py
 infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh · sealed-secrets/
 docs/       adr/ · runbooks/ · engineering-log/
 migrations/ Alembic versions (the schema actually shipped)

@@ -1,0 +1,5166 @@
+{
+ "generated_at": "2026-07-31T14:16:56+03:00",
+ "provenance": {
+  "weather": "Open-Meteo (https://open-meteo.com/), CC BY 4.0",
+  "model": null,
+  "note": "Every number here was computed by vinea's features.py, from the weather above, by the same code path the nightly batch runs. All advisories are degraded=true: the deterministic path, no LLM."
+ },
+ "deps": {
+  "crop": "wine grapes (Vitis vinifera)",
+  "irrigation_method": "drip",
+  "spray_sensitivity": "very high (powdery/downy mildew programme all summer)",
+  "kc": 0.7,
+  "root_depth_m": 1.2,
+  "taw_mm": 150.0,
+  "mad_fraction": 0.45,
+  "initial_depletion_mm": 0.0,
+  "effective_rain_fraction": 0.8,
+  "rain_skip_mm": 5.0,
+  "refill_fraction": 1.0,
+  "deltat_ideal": [
+   2.0,
+   8.0
+  ],
+  "deltat_marginal_upper": 10.0,
+  "deltat_inversion_below": 2.0,
+  "wind_ideal_ms": [
+   0.83,
+   4.2
+  ],
+  "spray_index_higher_is_better": true,
+  "spray_index_cutoff": 40.0,
+  "rain_fast_hours": 2
+ },
+ "sites": [
+  {
+   "key": "nemea",
+   "name": "Nemea",
+   "region": "Corinthia, Peloponnese",
+   "latitude": 37.8125,
+   "longitude": 22.6875,
+   "blurb": "Agiorgitiko heartland, 600 m. Genuinely water-stressed in summer, which is what makes the irrigation question non-trivial.",
+   "nights": [
+    {
+     "run_date": "2026-07-01",
+     "target_date": "2026-07-02",
+     "advisory": {
+      "date": "2026-07-02",
+      "irrigation": {
+       "target_date": "2026-07-02",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 126.9,
+       "current_depletion_mm": 126.86,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 126.9mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-06-30T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-02",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-02T00:00:00",
+         "end": "2026-07-02T14:00:00",
+         "reason": "14h suitable (Delta T ideal×10, marginal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 11.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-02T19:00:00",
+         "end": "2026-07-03T00:00:00",
+         "reason": "5h suitable (Delta T ideal×3, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 137.58,
+      "current_depletion_mm": 126.86,
+      "etc_tomorrow_mm": 3.78,
+      "forecast_rain_tomorrow_mm": 1.0,
+      "effective_rain_tomorrow_mm": 0.8,
+      "projected_depletion_mm": 129.84,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 6,
+       "unsuitable": 2
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-06-30T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-02",
+     "target_date": "2026-07-03",
+     "advisory": {
+      "date": "2026-07-03",
+      "irrigation": {
+       "target_date": "2026-07-03",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 127.2,
+       "current_depletion_mm": 127.25,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 127.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-01T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-03",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-03T00:00:00",
+         "end": "2026-07-03T12:00:00",
+         "reason": "12h suitable (Delta T ideal×9, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 11:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-03T20:00:00",
+         "end": "2026-07-03T23:00:00",
+         "reason": "3h suitable (Delta T marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.50 °C > 10.0 → unsuitable",
+          "after 22:00: wind 0.45 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 137.97,
+      "current_depletion_mm": 127.25,
+      "etc_tomorrow_mm": 4.45,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 131.7,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "marginal": 7,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-01T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-03",
+     "target_date": "2026-07-04",
+     "advisory": {
+      "date": "2026-07-04",
+      "irrigation": {
+       "target_date": "2026-07-04",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 126.4,
+       "current_depletion_mm": 126.41,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 126.4mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-02T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-04",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-04T01:00:00",
+         "end": "2026-07-04T08:00:00",
+         "reason": "7h suitable (Delta T ideal×7; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 01:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion",
+          "after 07:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-04T09:00:00",
+         "end": "2026-07-04T11:00:00",
+         "reason": "2h suitable (Delta T ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion",
+          "after 10:00: wind 4.58 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-04T18:00:00",
+         "end": "2026-07-05T00:00:00",
+         "reason": "6h suitable (Delta T marginal×5, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 18:00: wind 4.84 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 137.85,
+      "current_depletion_mm": 126.41,
+      "etc_tomorrow_mm": 3.95,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 130.37,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 12,
+       "marginal": 10,
+       "unsuitable": 2
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-02T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-04",
+     "target_date": "2026-07-05",
+     "advisory": {
+      "date": "2026-07-05",
+      "irrigation": {
+       "target_date": "2026-07-05",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 126.7,
+       "current_depletion_mm": 126.65,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 126.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-03T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-05",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-05T00:00:00",
+         "end": "2026-07-05T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 5.13 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-05T21:00:00",
+         "end": "2026-07-06T00:00:00",
+         "reason": "3h suitable (Delta T ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: wind 4.85 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.09,
+      "current_depletion_mm": 126.65,
+      "etc_tomorrow_mm": 4.58,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 131.23,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 10
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-03T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-05",
+     "target_date": "2026-07-06",
+     "advisory": {
+      "date": "2026-07-06",
+      "irrigation": {
+       "target_date": "2026-07-06",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 126.5,
+       "current_depletion_mm": 126.45,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 126.5mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-04T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-06",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-06T00:00:00",
+         "end": "2026-07-06T11:00:00",
+         "reason": "11h suitable (Delta T ideal×9, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: wind 4.21 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-06T20:00:00",
+         "end": "2026-07-07T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 137.89,
+      "current_depletion_mm": 126.45,
+      "etc_tomorrow_mm": 4.83,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 131.28,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 12,
+       "marginal": 4,
+       "unsuitable": 8
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-04T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-06",
+     "target_date": "2026-07-07",
+     "advisory": {
+      "date": "2026-07-07",
+      "irrigation": {
+       "target_date": "2026-07-07",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 127.0,
+       "current_depletion_mm": 126.96,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 127.0mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-05T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-07",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-07T00:00:00",
+         "end": "2026-07-07T11:00:00",
+         "reason": "11h suitable (Delta T ideal×10, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-07T21:00:00",
+         "end": "2026-07-08T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.80 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.4,
+      "current_depletion_mm": 126.96,
+      "etc_tomorrow_mm": 4.87,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 131.83,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 12,
+       "marginal": 2,
+       "unsuitable": 10
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-05T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-07",
+     "target_date": "2026-07-08",
+     "advisory": {
+      "date": "2026-07-08",
+      "irrigation": {
+       "target_date": "2026-07-08",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 127.6,
+       "current_depletion_mm": 127.58,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 127.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-06T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-08",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-08T00:00:00",
+         "end": "2026-07-08T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-08T10:00:00",
+         "end": "2026-07-08T11:00:00",
+         "reason": "1h suitable (Delta T marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion",
+          "after 10:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-08T18:00:00",
+         "end": "2026-07-08T19:00:00",
+         "reason": "1h suitable (Delta T marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 18:00: rain within 2h → rain-fastness",
+          "after 18:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-08T21:00:00",
+         "end": "2026-07-09T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.02,
+      "current_depletion_mm": 127.58,
+      "etc_tomorrow_mm": 3.58,
+      "forecast_rain_tomorrow_mm": 0.2,
+      "effective_rain_tomorrow_mm": 0.16,
+      "projected_depletion_mm": 131.0,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 5,
+       "unsuitable": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-06T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-08",
+     "target_date": "2026-07-09",
+     "advisory": {
+      "date": "2026-07-09",
+      "irrigation": {
+       "target_date": "2026-07-09",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 128.0,
+       "current_depletion_mm": 128.02,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 128.0mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-07T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-09",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-09T00:00:00",
+         "end": "2026-07-09T11:00:00",
+         "reason": "11h suitable (Delta T ideal×10, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: wind 5.19 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-09T22:00:00",
+         "end": "2026-07-09T23:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: rain within 2h → rain-fastness",
+          "after 22:00: Delta T 1.90 °C < 2.0 → inversion risk"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.46,
+      "current_depletion_mm": 128.02,
+      "etc_tomorrow_mm": 3.49,
+      "forecast_rain_tomorrow_mm": 2.9,
+      "effective_rain_tomorrow_mm": 2.32,
+      "projected_depletion_mm": 129.19,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "marginal": 5,
+       "inversion_risk": 2
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-07T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-09",
+     "target_date": "2026-07-10",
+     "advisory": {
+      "date": "2026-07-10",
+      "irrigation": {
+       "target_date": "2026-07-10",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 127.0,
+       "current_depletion_mm": 127.01,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 127.0mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-08T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-10",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-10T09:00:00",
+         "end": "2026-07-10T12:00:00",
+         "reason": "3h suitable (Delta T ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: Delta T 1.10 °C < 2.0 → inversion risk",
+          "after 11:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-10T16:00:00",
+         "end": "2026-07-11T00:00:00",
+         "reason": "8h suitable (Delta T ideal×7, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 16:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.61,
+      "current_depletion_mm": 127.01,
+      "etc_tomorrow_mm": 2.94,
+      "forecast_rain_tomorrow_mm": 0.4,
+      "effective_rain_tomorrow_mm": 0.32,
+      "projected_depletion_mm": 129.63,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "inversion_risk": 9,
+       "ideal": 14,
+       "marginal": 1
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-08T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-10",
+     "target_date": "2026-07-11",
+     "advisory": {
+      "date": "2026-07-11",
+      "irrigation": {
+       "target_date": "2026-07-11",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 124.6,
+       "current_depletion_mm": 124.61,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 124.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-09T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-11",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-11T00:00:00",
+         "end": "2026-07-11T05:00:00",
+         "reason": "5h suitable (Delta T ideal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 04:00: Delta T 1.70 °C < 2.0 → inversion risk"
+         ]
+        },
+        {
+         "start": "2026-07-11T10:00:00",
+         "end": "2026-07-11T13:00:00",
+         "reason": "3h suitable (Delta T ideal×2, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.80 m/s < 0.83 m/s → near-calm/inversion",
+          "after 12:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-11T19:00:00",
+         "end": "2026-07-12T00:00:00",
+         "reason": "5h suitable (Delta T marginal×3, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 11.00 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.21,
+      "current_depletion_mm": 124.61,
+      "etc_tomorrow_mm": 4.26,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 128.87,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "inversion_risk": 4,
+       "marginal": 4,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-09T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-11",
+     "target_date": "2026-07-12",
+     "advisory": {
+      "date": "2026-07-12",
+      "irrigation": {
+       "target_date": "2026-07-12",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 122.4,
+       "current_depletion_mm": 122.36,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 122.4mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-10T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-12",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-12T00:00:00",
+         "end": "2026-07-12T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.78 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-12T10:00:00",
+         "end": "2026-07-12T13:00:00",
+         "reason": "3h suitable (Delta T ideal×2, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.78 m/s < 0.83 m/s → near-calm/inversion",
+          "after 12:00: Delta T 11.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-12T21:00:00",
+         "end": "2026-07-13T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 11.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 136.28,
+      "current_depletion_mm": 122.36,
+      "etc_tomorrow_mm": 4.75,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.11,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 2,
+       "unsuitable": 8
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-10T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-12",
+     "target_date": "2026-07-13",
+     "advisory": {
+      "date": "2026-07-13",
+      "irrigation": {
+       "target_date": "2026-07-13",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.6,
+       "current_depletion_mm": 123.6,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-11T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-13",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-13T00:00:00",
+         "end": "2026-07-13T12:00:00",
+         "reason": "12h suitable (Delta T ideal×10, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 11:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-13T19:00:00",
+         "end": "2026-07-13T23:00:00",
+         "reason": "4h suitable (Delta T marginal×2, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.10 °C > 10.0 → unsuitable",
+          "after 22:00: wind 0.71 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 136.67,
+      "current_depletion_mm": 123.6,
+      "etc_tomorrow_mm": 4.19,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.78,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 13,
+       "marginal": 4,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-11T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-13",
+     "target_date": "2026-07-14",
+     "advisory": {
+      "date": "2026-07-14",
+      "irrigation": {
+       "target_date": "2026-07-14",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 128.2,
+       "current_depletion_mm": 128.23,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 128.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-12T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-14",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-14T01:00:00",
+         "end": "2026-07-14T12:00:00",
+         "reason": "11h suitable (Delta T ideal×9, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 01:00: wind 0.64 m/s < 0.83 m/s → near-calm/inversion",
+          "after 11:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-14T20:00:00",
+         "end": "2026-07-15T00:00:00",
+         "reason": "4h suitable (Delta T ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.15,
+      "current_depletion_mm": 128.23,
+      "etc_tomorrow_mm": 4.69,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 132.92,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 2,
+       "unsuitable": 8
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-12T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-14",
+     "target_date": "2026-07-15",
+     "advisory": {
+      "date": "2026-07-15",
+      "irrigation": {
+       "target_date": "2026-07-15",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 128.7,
+       "current_depletion_mm": 128.71,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 128.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-13T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-15",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-15T00:00:00",
+         "end": "2026-07-15T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.60 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-15T10:00:00",
+         "end": "2026-07-15T11:00:00",
+         "reason": "1h suitable (Delta T marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.60 m/s < 0.83 m/s → near-calm/inversion",
+          "after 10:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-15T21:00:00",
+         "end": "2026-07-16T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.60 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.63,
+      "current_depletion_mm": 128.71,
+      "etc_tomorrow_mm": 4.81,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 133.52,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 12,
+       "marginal": 2,
+       "unsuitable": 10
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-13T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-15",
+     "target_date": "2026-07-16",
+     "advisory": {
+      "date": "2026-07-16",
+      "irrigation": {
+       "target_date": "2026-07-16",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 129.1,
+       "current_depletion_mm": 129.1,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 129.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-14T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-16",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-16T00:00:00",
+         "end": "2026-07-16T11:00:00",
+         "reason": "11h suitable (Delta T ideal×10, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-16T21:00:00",
+         "end": "2026-07-17T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.02,
+      "current_depletion_mm": 129.1,
+      "etc_tomorrow_mm": 5.02,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 134.12,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 12,
+       "marginal": 2,
+       "unsuitable": 10
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-14T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-16",
+     "target_date": "2026-07-17",
+     "advisory": {
+      "date": "2026-07-17",
+      "irrigation": {
+       "target_date": "2026-07-17",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 129.3,
+       "current_depletion_mm": 129.32,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 129.3mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-15T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-17",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-17T00:00:00",
+         "end": "2026-07-17T10:00:00",
+         "reason": "10h suitable (Delta T ideal×9, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: wind 4.56 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-17T21:00:00",
+         "end": "2026-07-18T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: wind 4.88 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.24,
+      "current_depletion_mm": 129.32,
+      "etc_tomorrow_mm": 5.02,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 134.34,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 11,
+       "marginal": 9,
+       "unsuitable": 4
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-15T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-17",
+     "target_date": "2026-07-18",
+     "advisory": {
+      "date": "2026-07-18",
+      "irrigation": {
+       "target_date": "2026-07-18",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 132.5,
+       "current_depletion_mm": 132.53,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 132.5mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-16T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-18",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-18T00:00:00",
+         "end": "2026-07-18T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.63 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-18T10:00:00",
+         "end": "2026-07-18T12:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.63 m/s < 0.83 m/s → near-calm/inversion",
+          "after 11:00: Delta T 11.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-18T20:00:00",
+         "end": "2026-07-19T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.70 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.74,
+      "current_depletion_mm": 132.53,
+      "etc_tomorrow_mm": 5.09,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 137.62,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 13,
+       "marginal": 3,
+       "unsuitable": 8
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-16T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-18",
+     "target_date": "2026-07-19",
+     "advisory": {
+      "date": "2026-07-19",
+      "irrigation": {
+       "target_date": "2026-07-19",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 137.5,
+       "current_depletion_mm": 137.54,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 137.5mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-17T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-19",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-19T00:00:00",
+         "end": "2026-07-19T11:00:00",
+         "reason": "11h suitable (Delta T ideal×10, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-19T22:00:00",
+         "end": "2026-07-20T00:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.14,
+      "current_depletion_mm": 137.54,
+      "etc_tomorrow_mm": 4.73,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 142.27,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "marginal": 3,
+       "unsuitable": 11
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-17T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-19",
+     "target_date": "2026-07-20",
+     "advisory": {
+      "date": "2026-07-20",
+      "irrigation": {
+       "target_date": "2026-07-20",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 138.3,
+       "current_depletion_mm": 138.26,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 138.3mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-18T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-20",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-20T00:00:00",
+         "end": "2026-07-20T02:00:00",
+         "reason": "2h suitable (Delta T marginal×1, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 01:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-20T03:00:00",
+         "end": "2026-07-20T12:00:00",
+         "reason": "9h suitable (Delta T ideal×6, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 03:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion",
+          "after 11:00: Delta T 11.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-20T21:00:00",
+         "end": "2026-07-21T00:00:00",
+         "reason": "3h suitable (Delta T marginal×2, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.86,
+      "current_depletion_mm": 138.26,
+      "etc_tomorrow_mm": 5.06,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 143.32,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 6,
+       "ideal": 9,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-18T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-20",
+     "target_date": "2026-07-21",
+     "advisory": {
+      "date": "2026-07-21",
+      "irrigation": {
+       "target_date": "2026-07-21",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 138.0,
+       "current_depletion_mm": 138.0,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 138.0mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-19T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-21",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-21T00:00:00",
+         "end": "2026-07-21T10:00:00",
+         "reason": "10h suitable (Delta T ideal×9, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-21T21:00:00",
+         "end": "2026-07-22T00:00:00",
+         "reason": "3h suitable (Delta T marginal×2, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.6,
+      "current_depletion_mm": 138.0,
+      "etc_tomorrow_mm": 5.1,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 143.11,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "marginal": 3,
+       "unsuitable": 11
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-19T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-21",
+     "target_date": "2026-07-22",
+     "advisory": {
+      "date": "2026-07-22",
+      "irrigation": {
+       "target_date": "2026-07-22",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 138.1,
+       "current_depletion_mm": 138.07,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 138.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-20T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-22",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-22T00:00:00",
+         "end": "2026-07-22T01:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 00:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-22T02:00:00",
+         "end": "2026-07-22T09:00:00",
+         "reason": "7h suitable (Delta T ideal×7; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 02:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion",
+          "after 08:00: wind 0.50 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-22T22:00:00",
+         "end": "2026-07-23T00:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: Delta T 11.90 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.67,
+      "current_depletion_mm": 138.07,
+      "etc_tomorrow_mm": 5.86,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 143.93,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "unsuitable": 12,
+       "marginal": 2
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-20T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-22",
+     "target_date": "2026-07-23",
+     "advisory": {
+      "date": "2026-07-23",
+      "irrigation": {
+       "target_date": "2026-07-23",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 137.7,
+       "current_depletion_mm": 137.66,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 137.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-21T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-23",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-23T00:00:00",
+         "end": "2026-07-23T10:00:00",
+         "reason": "10h suitable (Delta T ideal×10; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: wind 4.27 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-23T13:00:00",
+         "end": "2026-07-23T17:00:00",
+         "reason": "4h suitable (Delta T marginal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 13:00: wind 4.39 m/s > 4.2 m/s → drift",
+          "after 16:00: wind 4.41 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-23T19:00:00",
+         "end": "2026-07-24T00:00:00",
+         "reason": "5h suitable (Delta T ideal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: wind 4.88 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.26,
+      "current_depletion_mm": 137.66,
+      "etc_tomorrow_mm": 4.14,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 141.8,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 18,
+       "marginal": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-21T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-23",
+     "target_date": "2026-07-24",
+     "advisory": {
+      "date": "2026-07-24",
+      "irrigation": {
+       "target_date": "2026-07-24",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 138.1,
+       "current_depletion_mm": 138.14,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 138.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-22T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-24",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-24T00:00:00",
+         "end": "2026-07-24T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.51 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-24T11:00:00",
+         "end": "2026-07-24T12:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.76 m/s < 0.83 m/s → near-calm/inversion",
+          "after 11:00: wind 4.32 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.74,
+      "current_depletion_mm": 138.14,
+      "etc_tomorrow_mm": 3.02,
+      "forecast_rain_tomorrow_mm": 1.1,
+      "effective_rain_tomorrow_mm": 0.88,
+      "projected_depletion_mm": 140.29,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 18,
+       "marginal": 1,
+       "unsuitable": 2,
+       "inversion_risk": 3
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-22T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-24",
+     "target_date": "2026-07-25",
+     "advisory": {
+      "date": "2026-07-25",
+      "irrigation": {
+       "target_date": "2026-07-25",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 137.4,
+       "current_depletion_mm": 137.44,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 137.4mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-23T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-25",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-25T08:00:00",
+         "end": "2026-07-25T09:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 08:00: Delta T 1.70 °C < 2.0 → inversion risk",
+          "after 08:00: wind 4.28 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-25T19:00:00",
+         "end": "2026-07-26T00:00:00",
+         "reason": "5h suitable (Delta T marginal×1, ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: wind 5.12 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 141.04,
+      "current_depletion_mm": 137.44,
+      "etc_tomorrow_mm": 3.86,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 141.31,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "inversion_risk": 8,
+       "ideal": 9,
+       "marginal": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-23T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-25",
+     "target_date": "2026-07-26",
+     "advisory": {
+      "date": "2026-07-26",
+      "irrigation": {
+       "target_date": "2026-07-26",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 135.8,
+       "current_depletion_mm": 135.76,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 135.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-24T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-26",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-26T00:00:00",
+         "end": "2026-07-26T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.42 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-26T11:00:00",
+         "end": "2026-07-26T13:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion",
+          "after 12:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-26T19:00:00",
+         "end": "2026-07-27T00:00:00",
+         "reason": "5h suitable (Delta T marginal×2, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 140.24,
+      "current_depletion_mm": 135.76,
+      "etc_tomorrow_mm": 4.18,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 139.94,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 4,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-24T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-26",
+     "target_date": "2026-07-27",
+     "advisory": {
+      "date": "2026-07-27",
+      "irrigation": {
+       "target_date": "2026-07-27",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 135.2,
+       "current_depletion_mm": 135.15,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 135.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-25T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-27",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-27T00:00:00",
+         "end": "2026-07-27T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 0.40 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-27T20:00:00",
+         "end": "2026-07-28T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.40 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 139.63,
+      "current_depletion_mm": 135.15,
+      "etc_tomorrow_mm": 4.35,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 139.5,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 13,
+       "marginal": 2,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-25T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-27",
+     "target_date": "2026-07-28",
+     "advisory": {
+      "date": "2026-07-28",
+      "irrigation": {
+       "target_date": "2026-07-28",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 133.7,
+       "current_depletion_mm": 133.69,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 133.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-26T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-28",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-28T00:00:00",
+         "end": "2026-07-28T11:00:00",
+         "reason": "11h suitable (Delta T ideal×10, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 10:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-28T20:00:00",
+         "end": "2026-07-28T22:00:00",
+         "reason": "2h suitable (Delta T marginal×1, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.70 °C > 10.0 → unsuitable",
+          "after 21:00: wind 0.76 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-28T23:00:00",
+         "end": "2026-07-29T00:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 23:00: wind 0.76 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 138.17,
+      "current_depletion_mm": 133.69,
+      "etc_tomorrow_mm": 4.79,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 138.47,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 13,
+       "marginal": 2,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-26T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-28",
+     "target_date": "2026-07-29",
+     "advisory": {
+      "date": "2026-07-29",
+      "irrigation": {
+       "target_date": "2026-07-29",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 131.8,
+       "current_depletion_mm": 131.75,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 131.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-27T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-29",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-29T00:00:00",
+         "end": "2026-07-29T10:00:00",
+         "reason": "10h suitable (Delta T ideal×9, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-29T21:00:00",
+         "end": "2026-07-30T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: wind 5.02 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 136.23,
+      "current_depletion_mm": 131.75,
+      "etc_tomorrow_mm": 5.12,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 136.86,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 11,
+       "marginal": 4,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-27T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-29",
+     "target_date": "2026-07-30",
+     "advisory": {
+      "date": "2026-07-30",
+      "irrigation": {
+       "target_date": "2026-07-30",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 130.7,
+       "current_depletion_mm": 130.65,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 130.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-28T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-30",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-30T00:00:00",
+         "end": "2026-07-30T09:00:00",
+         "reason": "9h suitable (Delta T ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 08:00: wind 4.78 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-30T21:00:00",
+         "end": "2026-07-31T00:00:00",
+         "reason": "3h suitable (Delta T marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 135.13,
+      "current_depletion_mm": 130.65,
+      "etc_tomorrow_mm": 5.15,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 135.8,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 10,
+       "marginal": 7,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-28T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-30",
+     "target_date": "2026-07-31",
+     "advisory": {
+      "date": "2026-07-31",
+      "irrigation": {
+       "target_date": "2026-07-31",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 130.2,
+       "current_depletion_mm": 130.17,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 130.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-29T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-31",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-31T00:00:00",
+         "end": "2026-07-31T02:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 01:00: wind 4.31 m/s > 4.2 m/s → drift"
+         ]
+        },
+        {
+         "start": "2026-07-31T21:00:00",
+         "end": "2026-08-01T00:00:00",
+         "reason": "3h suitable (Delta T marginal×1, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: wind 6.04 m/s > 4.2 m/s → drift"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 134.65,
+      "current_depletion_mm": 130.17,
+      "etc_tomorrow_mm": 5.68,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 135.85,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 13,
+       "ideal": 8,
+       "unsuitable": 3
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-29T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    }
+   ]
+  },
+  {
+   "key": "naoussa",
+   "name": "Naoussa",
+   "region": "Imathia, Macedonia",
+   "latitude": 40.63,
+   "longitude": 22.07,
+   "blurb": "Xinomavro, on the slopes of Vermio. Cooler and wetter than Nemea — the contrast is the point: same code, different answers.",
+   "nights": [
+    {
+     "run_date": "2026-07-01",
+     "target_date": "2026-07-02",
+     "advisory": {
+      "date": "2026-07-02",
+      "irrigation": {
+       "target_date": "2026-07-02",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 85.6,
+       "current_depletion_mm": 85.61,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 85.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-06-30T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-02",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-02T00:00:00",
+         "end": "2026-07-02T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-02T09:00:00",
+         "end": "2026-07-02T14:00:00",
+         "reason": "5h suitable (Delta T ideal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.70 m/s < 0.83 m/s → near-calm/inversion",
+          "after 13:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-02T19:00:00",
+         "end": "2026-07-03T00:00:00",
+         "reason": "5h suitable (Delta T marginal×1, ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 11.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 112.63,
+      "current_depletion_mm": 85.61,
+      "etc_tomorrow_mm": 3.88,
+      "forecast_rain_tomorrow_mm": 0.1,
+      "effective_rain_tomorrow_mm": 0.08,
+      "projected_depletion_mm": 89.41,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 18,
+       "marginal": 5,
+       "unsuitable": 1
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-06-30T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-02",
+     "target_date": "2026-07-03",
+     "advisory": {
+      "date": "2026-07-03",
+      "irrigation": {
+       "target_date": "2026-07-03",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 90.1,
+       "current_depletion_mm": 90.11,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 90.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-01T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-03",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-03T00:00:00",
+         "end": "2026-07-03T14:00:00",
+         "reason": "14h suitable (Delta T ideal×12, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-03T15:00:00",
+         "end": "2026-07-04T00:00:00",
+         "reason": "9h suitable (Delta T marginal×5, ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 15:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 113.36,
+      "current_depletion_mm": 90.11,
+      "etc_tomorrow_mm": 3.98,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 94.08,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 7,
+       "unsuitable": 1
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-01T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-03",
+     "target_date": "2026-07-04",
+     "advisory": {
+      "date": "2026-07-04",
+      "irrigation": {
+       "target_date": "2026-07-04",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 93.9,
+       "current_depletion_mm": 93.9,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 93.9mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-02T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-04",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-04T00:00:00",
+         "end": "2026-07-04T13:00:00",
+         "reason": "13h suitable (Delta T ideal×11, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 12:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-04T22:00:00",
+         "end": "2026-07-04T23:00:00",
+         "reason": "1h suitable (Delta T marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: Delta T 10.50 °C > 10.0 → unsuitable",
+          "after 22:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 114.09,
+      "current_depletion_mm": 93.9,
+      "etc_tomorrow_mm": 4.85,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 98.76,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 11,
+       "marginal": 3,
+       "unsuitable": 10
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-02T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-04",
+     "target_date": "2026-07-05",
+     "advisory": {
+      "date": "2026-07-05",
+      "irrigation": {
+       "target_date": "2026-07-05",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 97.9,
+       "current_depletion_mm": 97.88,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 97.9mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-03T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-05",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-05T00:00:00",
+         "end": "2026-07-05T12:00:00",
+         "reason": "12h suitable (Delta T marginal×7, ideal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 11:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-05T21:00:00",
+         "end": "2026-07-06T00:00:00",
+         "reason": "3h suitable (Delta T marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 114.91,
+      "current_depletion_mm": 97.88,
+      "etc_tomorrow_mm": 5.14,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 103.02,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 10,
+       "ideal": 5,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-03T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-05",
+     "target_date": "2026-07-06",
+     "advisory": {
+      "date": "2026-07-06",
+      "irrigation": {
+       "target_date": "2026-07-06",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 102.6,
+       "current_depletion_mm": 102.57,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 102.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-04T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-06",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-06T00:00:00",
+         "end": "2026-07-06T13:00:00",
+         "reason": "13h suitable (Delta T marginal×6, ideal×7; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 12:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-06T20:00:00",
+         "end": "2026-07-07T00:00:00",
+         "reason": "4h suitable (Delta T marginal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.30 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 117.93,
+      "current_depletion_mm": 102.57,
+      "etc_tomorrow_mm": 4.65,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 107.22,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 10,
+       "ideal": 7,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-04T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-06",
+     "target_date": "2026-07-07",
+     "advisory": {
+      "date": "2026-07-07",
+      "irrigation": {
+       "target_date": "2026-07-07",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 104.1,
+       "current_depletion_mm": 104.07,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 104.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-05T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-07",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-07T00:00:00",
+         "end": "2026-07-07T14:00:00",
+         "reason": "14h suitable (Delta T marginal×5, ideal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 11.00 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-07T20:00:00",
+         "end": "2026-07-08T00:00:00",
+         "reason": "4h suitable (Delta T marginal×2, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.40 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 119.43,
+      "current_depletion_mm": 104.07,
+      "etc_tomorrow_mm": 4.4,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 108.46,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 7,
+       "ideal": 11,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-05T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-07",
+     "target_date": "2026-07-08",
+     "advisory": {
+      "date": "2026-07-08",
+      "irrigation": {
+       "target_date": "2026-07-08",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 105.0,
+       "current_depletion_mm": 104.95,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 105.0mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-06T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-08",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-08T00:00:00",
+         "end": "2026-07-08T14:00:00",
+         "reason": "14h suitable (Delta T ideal×13, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-08T19:00:00",
+         "end": "2026-07-09T00:00:00",
+         "reason": "5h suitable (Delta T marginal×2, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 120.31,
+      "current_depletion_mm": 104.95,
+      "etc_tomorrow_mm": 4.17,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 109.12,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 3,
+       "unsuitable": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-06T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-08",
+     "target_date": "2026-07-09",
+     "advisory": {
+      "date": "2026-07-09",
+      "irrigation": {
+       "target_date": "2026-07-09",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 105.6,
+       "current_depletion_mm": 105.64,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 105.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-07T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-09",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-09T00:00:00",
+         "end": "2026-07-09T02:00:00",
+         "reason": "2h suitable (Delta T marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 01:00: wind 0.61 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-09T03:00:00",
+         "end": "2026-07-09T05:00:00",
+         "reason": "2h suitable (Delta T ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 03:00: wind 0.61 m/s < 0.83 m/s → near-calm/inversion",
+          "after 04:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-09T08:00:00",
+         "end": "2026-07-09T15:00:00",
+         "reason": "7h suitable (Delta T ideal×4, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 08:00: rain within 2h → rain-fastness",
+          "after 14:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-09T19:00:00",
+         "end": "2026-07-10T00:00:00",
+         "reason": "5h suitable (Delta T marginal×2, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 121.0,
+      "current_depletion_mm": 105.64,
+      "etc_tomorrow_mm": 3.84,
+      "forecast_rain_tomorrow_mm": 0.1,
+      "effective_rain_tomorrow_mm": 0.08,
+      "projected_depletion_mm": 109.4,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 7,
+       "ideal": 13,
+       "unsuitable": 4
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-07T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-09",
+     "target_date": "2026-07-10",
+     "advisory": {
+      "date": "2026-07-10",
+      "irrigation": {
+       "target_date": "2026-07-10",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 106.8,
+       "current_depletion_mm": 106.84,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 106.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-08T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-10",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-10T00:00:00",
+         "end": "2026-07-10T12:00:00",
+         "reason": "12h suitable (Delta T marginal×8, ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 11:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-10T21:00:00",
+         "end": "2026-07-11T00:00:00",
+         "reason": "3h suitable (Delta T marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 11.30 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 121.69,
+      "current_depletion_mm": 106.84,
+      "etc_tomorrow_mm": 4.92,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 111.76,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "marginal": 11,
+       "ideal": 4,
+       "unsuitable": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-08T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-10",
+     "target_date": "2026-07-11",
+     "advisory": {
+      "date": "2026-07-11",
+      "irrigation": {
+       "target_date": "2026-07-11",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 107.2,
+       "current_depletion_mm": 107.22,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 107.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-09T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-11",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-11T00:00:00",
+         "end": "2026-07-11T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.71 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-11T09:00:00",
+         "end": "2026-07-11T10:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.71 m/s < 0.83 m/s → near-calm/inversion",
+          "after 09:00: wind 0.81 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-11T11:00:00",
+         "end": "2026-07-11T16:00:00",
+         "reason": "5h suitable (Delta T ideal×2, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.81 m/s < 0.83 m/s → near-calm/inversion",
+          "after 15:00: Delta T 10.80 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-11T20:00:00",
+         "end": "2026-07-12T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.00 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 121.94,
+      "current_depletion_mm": 107.22,
+      "etc_tomorrow_mm": 4.4,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 111.62,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 4,
+       "unsuitable": 4
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-09T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-11",
+     "target_date": "2026-07-12",
+     "advisory": {
+      "date": "2026-07-12",
+      "irrigation": {
+       "target_date": "2026-07-12",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 109.6,
+       "current_depletion_mm": 109.6,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 109.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-10T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-12",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-12T00:00:00",
+         "end": "2026-07-12T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.36 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-12T09:00:00",
+         "end": "2026-07-12T15:00:00",
+         "reason": "6h suitable (Delta T ideal×5, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.36 m/s < 0.83 m/s → near-calm/inversion",
+          "after 14:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-12T20:00:00",
+         "end": "2026-07-12T21:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: rain within 2h → rain-fastness",
+          "after 20:00: wind 0.42 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-12T22:00:00",
+         "end": "2026-07-12T23:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: wind 0.42 m/s < 0.83 m/s → near-calm/inversion",
+          "after 22:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 123.84,
+      "current_depletion_mm": 109.6,
+      "etc_tomorrow_mm": 4.09,
+      "forecast_rain_tomorrow_mm": 0.3,
+      "effective_rain_tomorrow_mm": 0.24,
+      "projected_depletion_mm": 113.45,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 20,
+       "marginal": 1,
+       "unsuitable": 3
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-10T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-12",
+     "target_date": "2026-07-13",
+     "advisory": {
+      "date": "2026-07-13",
+      "irrigation": {
+       "target_date": "2026-07-13",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 112.5,
+       "current_depletion_mm": 112.51,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 112.5mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-11T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-13",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-13T04:00:00",
+         "end": "2026-07-13T13:00:00",
+         "reason": "9h suitable (Delta T ideal×8, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 04:00: rain within 2h → rain-fastness",
+          "after 12:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-13T20:00:00",
+         "end": "2026-07-14T00:00:00",
+         "reason": "4h suitable (Delta T marginal×2, ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.80 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 124.42,
+      "current_depletion_mm": 112.51,
+      "etc_tomorrow_mm": 4.17,
+      "forecast_rain_tomorrow_mm": 2.1,
+      "effective_rain_tomorrow_mm": 1.68,
+      "projected_depletion_mm": 115.01,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 3,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-11T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-13",
+     "target_date": "2026-07-14",
+     "advisory": {
+      "date": "2026-07-14",
+      "irrigation": {
+       "target_date": "2026-07-14",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 116.1,
+       "current_depletion_mm": 116.1,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 116.1mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-12T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-14",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-14T00:00:00",
+         "end": "2026-07-14T14:00:00",
+         "reason": "14h suitable (Delta T ideal×12, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-14T20:00:00",
+         "end": "2026-07-15T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 11.00 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.34,
+      "current_depletion_mm": 116.1,
+      "etc_tomorrow_mm": 4.53,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 120.63,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 15,
+       "marginal": 3,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-12T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-14",
+     "target_date": "2026-07-15",
+     "advisory": {
+      "date": "2026-07-15",
+      "irrigation": {
+       "target_date": "2026-07-15",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 114.2,
+       "current_depletion_mm": 114.22,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 114.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-13T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-15",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-15T00:00:00",
+         "end": "2026-07-15T14:00:00",
+         "reason": "14h suitable (Delta T ideal×13, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-15T20:00:00",
+         "end": "2026-07-16T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.30 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.14,
+      "current_depletion_mm": 114.22,
+      "etc_tomorrow_mm": 4.41,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 118.63,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 2,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-13T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-15",
+     "target_date": "2026-07-16",
+     "advisory": {
+      "date": "2026-07-16",
+      "irrigation": {
+       "target_date": "2026-07-16",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 114.2,
+       "current_depletion_mm": 114.23,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 114.2mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-14T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-16",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-16T00:00:00",
+         "end": "2026-07-16T10:00:00",
+         "reason": "10h suitable (Delta T ideal×10; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: wind 0.78 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-16T11:00:00",
+         "end": "2026-07-16T14:00:00",
+         "reason": "3h suitable (Delta T ideal×2, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.78 m/s < 0.83 m/s → near-calm/inversion",
+          "after 13:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-16T19:00:00",
+         "end": "2026-07-16T23:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.80 °C > 10.0 → unsuitable",
+          "after 22:00: wind 0.36 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.15,
+      "current_depletion_mm": 114.23,
+      "etc_tomorrow_mm": 4.25,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 118.48,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "marginal": 2,
+       "unsuitable": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-14T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-16",
+     "target_date": "2026-07-17",
+     "advisory": {
+      "date": "2026-07-17",
+      "irrigation": {
+       "target_date": "2026-07-17",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 115.6,
+       "current_depletion_mm": 115.56,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 115.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-15T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-17",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-17T00:00:00",
+         "end": "2026-07-17T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.81 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-17T11:00:00",
+         "end": "2026-07-17T14:00:00",
+         "reason": "3h suitable (Delta T ideal×2, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.81 m/s < 0.83 m/s → near-calm/inversion",
+          "after 13:00: Delta T 10.60 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-17T20:00:00",
+         "end": "2026-07-18T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.64,
+      "current_depletion_mm": 115.56,
+      "etc_tomorrow_mm": 4.07,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 119.63,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 2,
+       "unsuitable": 6
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-15T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-17",
+     "target_date": "2026-07-18",
+     "advisory": {
+      "date": "2026-07-18",
+      "irrigation": {
+       "target_date": "2026-07-18",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 119.8,
+       "current_depletion_mm": 119.81,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 119.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-16T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-18",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-18T00:00:00",
+         "end": "2026-07-18T01:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 00:00: wind 0.64 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-18T02:00:00",
+         "end": "2026-07-18T08:00:00",
+         "reason": "6h suitable (Delta T ideal×6; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 02:00: wind 0.64 m/s < 0.83 m/s → near-calm/inversion",
+          "after 07:00: wind 0.42 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-18T10:00:00",
+         "end": "2026-07-18T15:00:00",
+         "reason": "5h suitable (Delta T ideal×3, marginal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 10:00: wind 0.63 m/s < 0.83 m/s → near-calm/inversion",
+          "after 14:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-18T19:00:00",
+         "end": "2026-07-18T23:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.90 °C > 10.0 → unsuitable",
+          "after 22:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 127.64,
+      "current_depletion_mm": 119.81,
+      "etc_tomorrow_mm": 4.15,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 123.96,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "marginal": 3,
+       "unsuitable": 4
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-16T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-18",
+     "target_date": "2026-07-19",
+     "advisory": {
+      "date": "2026-07-19",
+      "irrigation": {
+       "target_date": "2026-07-19",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.8,
+       "current_depletion_mm": 123.78,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-17T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-19",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-19T02:00:00",
+         "end": "2026-07-19T06:00:00",
+         "reason": "4h suitable (Delta T ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 02:00: rain within 2h → rain-fastness",
+          "after 05:00: wind 0.81 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-19T09:00:00",
+         "end": "2026-07-19T10:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.22 m/s < 0.83 m/s → near-calm/inversion",
+          "after 09:00: wind 0.60 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-19T11:00:00",
+         "end": "2026-07-19T22:00:00",
+         "reason": "11h suitable (Delta T ideal×6, marginal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.60 m/s < 0.83 m/s → near-calm/inversion",
+          "after 21:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-19T23:00:00",
+         "end": "2026-07-20T00:00:00",
+         "reason": "1h suitable (Delta T ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 23:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 4 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 129.46,
+      "current_depletion_mm": 123.78,
+      "etc_tomorrow_mm": 3.86,
+      "forecast_rain_tomorrow_mm": 0.1,
+      "effective_rain_tomorrow_mm": 0.08,
+      "projected_depletion_mm": 127.56,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 19,
+       "marginal": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-17T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-19",
+     "target_date": "2026-07-20",
+     "advisory": {
+      "date": "2026-07-20",
+      "irrigation": {
+       "target_date": "2026-07-20",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.7,
+       "current_depletion_mm": 123.71,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-18T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-20",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-20T01:00:00",
+         "end": "2026-07-20T09:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 01:00: wind 0.71 m/s < 0.83 m/s → near-calm/inversion",
+          "after 08:00: wind 0.36 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-20T12:00:00",
+         "end": "2026-07-20T14:00:00",
+         "reason": "2h suitable (Delta T ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 12:00: wind 0.71 m/s < 0.83 m/s → near-calm/inversion",
+          "after 13:00: Delta T 10.70 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-20T20:00:00",
+         "end": "2026-07-21T00:00:00",
+         "reason": "4h suitable (Delta T marginal×1, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 12.20 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 129.39,
+      "current_depletion_mm": 123.71,
+      "etc_tomorrow_mm": 4.49,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 128.2,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "unsuitable": 6,
+       "marginal": 1
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-18T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-20",
+     "target_date": "2026-07-21",
+     "advisory": {
+      "date": "2026-07-21",
+      "irrigation": {
+       "target_date": "2026-07-21",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.6,
+       "current_depletion_mm": 123.57,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-19T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-21",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-21T01:00:00",
+         "end": "2026-07-21T07:00:00",
+         "reason": "6h suitable (Delta T ideal×6; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 01:00: wind 0.63 m/s < 0.83 m/s → near-calm/inversion",
+          "after 06:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-21T09:00:00",
+         "end": "2026-07-22T00:00:00",
+         "reason": "15h suitable (Delta T ideal×12, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.32 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 129.33,
+      "current_depletion_mm": 123.57,
+      "etc_tomorrow_mm": 4.22,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.79,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 21,
+       "marginal": 3
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-19T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-21",
+     "target_date": "2026-07-22",
+     "advisory": {
+      "date": "2026-07-22",
+      "irrigation": {
+       "target_date": "2026-07-22",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.9,
+       "current_depletion_mm": 123.9,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.9mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-20T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-22",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-22T02:00:00",
+         "end": "2026-07-22T08:00:00",
+         "reason": "6h suitable (Delta T ideal×6; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 02:00: wind 0.00 m/s < 0.83 m/s → near-calm/inversion",
+          "after 07:00: wind 0.32 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-22T11:00:00",
+         "end": "2026-07-23T00:00:00",
+         "reason": "13h suitable (Delta T ideal×10, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: Delta T 1.90 °C < 2.0 → inversion risk"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 129.66,
+      "current_depletion_mm": 123.9,
+      "etc_tomorrow_mm": 3.47,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.37,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 19,
+       "inversion_risk": 2,
+       "marginal": 3
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-20T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-22",
+     "target_date": "2026-07-23",
+     "advisory": {
+      "date": "2026-07-23",
+      "irrigation": {
+       "target_date": "2026-07-23",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.5,
+       "current_depletion_mm": 123.55,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.5mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-21T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-23",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-23T00:00:00",
+         "end": "2026-07-23T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-23T09:00:00",
+         "end": "2026-07-24T00:00:00",
+         "reason": "15h suitable (Delta T ideal×6, marginal×9; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.82 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 129.31,
+      "current_depletion_mm": 123.55,
+      "etc_tomorrow_mm": 4.08,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.63,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 15,
+       "marginal": 9
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-21T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-23",
+     "target_date": "2026-07-24",
+     "advisory": {
+      "date": "2026-07-24",
+      "irrigation": {
+       "target_date": "2026-07-24",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 122.3,
+       "current_depletion_mm": 122.35,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 122.3mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-22T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-24",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-24T00:00:00",
+         "end": "2026-07-24T07:00:00",
+         "reason": "7h suitable (Delta T ideal×7; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 06:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-24T11:00:00",
+         "end": "2026-07-24T13:00:00",
+         "reason": "2h suitable (Delta T ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.54 m/s < 0.83 m/s → near-calm/inversion",
+          "after 12:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-24T20:00:00",
+         "end": "2026-07-25T00:00:00",
+         "reason": "4h suitable (Delta T ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 128.11,
+      "current_depletion_mm": 122.35,
+      "etc_tomorrow_mm": 2.62,
+      "forecast_rain_tomorrow_mm": 1.5,
+      "effective_rain_tomorrow_mm": 1.2,
+      "projected_depletion_mm": 123.77,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 24
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-22T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-24",
+     "target_date": "2026-07-25",
+     "advisory": {
+      "date": "2026-07-25",
+      "irrigation": {
+       "target_date": "2026-07-25",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.8,
+       "current_depletion_mm": 123.75,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-23T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-25",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-25T00:00:00",
+         "end": "2026-07-25T15:00:00",
+         "reason": "15h suitable (Delta T ideal×12, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 14:00: Delta T 10.40 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-25T20:00:00",
+         "end": "2026-07-26T00:00:00",
+         "reason": "4h suitable (Delta T ideal×4; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 20:00: Delta T 10.50 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 128.31,
+      "current_depletion_mm": 123.75,
+      "etc_tomorrow_mm": 4.21,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.96,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 16,
+       "marginal": 3,
+       "unsuitable": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-23T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-25",
+     "target_date": "2026-07-26",
+     "advisory": {
+      "date": "2026-07-26",
+      "irrigation": {
+       "target_date": "2026-07-26",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 122.8,
+       "current_depletion_mm": 122.78,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 122.8mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-24T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-26",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-26T00:00:00",
+         "end": "2026-07-27T00:00:00",
+         "reason": "24h suitable (Delta T ideal×19, marginal×5; wind ok; rain-fast)",
+         "limiting_factors": []
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 1 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 127.66,
+      "current_depletion_mm": 122.78,
+      "etc_tomorrow_mm": 4.1,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 126.88,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 19,
+       "marginal": 5
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-24T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-26",
+     "target_date": "2026-07-27",
+     "advisory": {
+      "date": "2026-07-27",
+      "irrigation": {
+       "target_date": "2026-07-27",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.6,
+       "current_depletion_mm": 123.64,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.6mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-25T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-27",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-27T00:00:00",
+         "end": "2026-07-27T14:00:00",
+         "reason": "14h suitable (Delta T ideal×14; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: rain within 2h → rain-fastness"
+         ]
+        },
+        {
+         "start": "2026-07-27T19:00:00",
+         "end": "2026-07-28T00:00:00",
+         "reason": "5h suitable (Delta T ideal×5; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: rain within 2h → rain-fastness"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "forecast rain within 2h after a spray window → rain-fastness risk",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 128.44,
+      "current_depletion_mm": 123.64,
+      "etc_tomorrow_mm": 3.23,
+      "forecast_rain_tomorrow_mm": 1.2,
+      "effective_rain_tomorrow_mm": 0.96,
+      "projected_depletion_mm": 125.91,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 24
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-25T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-27",
+     "target_date": "2026-07-28",
+     "advisory": {
+      "date": "2026-07-28",
+      "irrigation": {
+       "target_date": "2026-07-28",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 123.7,
+       "current_depletion_mm": 123.66,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 123.7mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-26T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-28",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-28T00:00:00",
+         "end": "2026-07-28T10:00:00",
+         "reason": "10h suitable (Delta T ideal×10; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 09:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-28T11:00:00",
+         "end": "2026-07-28T13:00:00",
+         "reason": "2h suitable (Delta T ideal×1, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 11:00: wind 0.67 m/s < 0.83 m/s → near-calm/inversion",
+          "after 12:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-28T22:00:00",
+         "end": "2026-07-29T00:00:00",
+         "reason": "2h suitable (Delta T ideal×2; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 22:00: wind 0.14 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 128.2,
+      "current_depletion_mm": 123.66,
+      "etc_tomorrow_mm": 4.26,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 127.92,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 14,
+       "marginal": 3,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-26T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-28",
+     "target_date": "2026-07-29",
+     "advisory": {
+      "date": "2026-07-29",
+      "irrigation": {
+       "target_date": "2026-07-29",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 121.4,
+       "current_depletion_mm": 121.41,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 121.4mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-27T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-29",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-29T00:00:00",
+         "end": "2026-07-30T00:00:00",
+         "reason": "24h suitable (Delta T ideal×17, marginal×7; wind ok; rain-fast)",
+         "limiting_factors": []
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 1 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.85,
+      "current_depletion_mm": 121.41,
+      "etc_tomorrow_mm": 4.05,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 125.45,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "marginal": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-27T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-29",
+     "target_date": "2026-07-30",
+     "advisory": {
+      "date": "2026-07-30",
+      "irrigation": {
+       "target_date": "2026-07-30",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 121.3,
+       "current_depletion_mm": 121.27,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 121.3mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-28T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-30",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-30T00:00:00",
+         "end": "2026-07-30T08:00:00",
+         "reason": "8h suitable (Delta T ideal×8; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 07:00: wind 0.45 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        },
+        {
+         "start": "2026-07-30T09:00:00",
+         "end": "2026-07-30T17:00:00",
+         "reason": "8h suitable (Delta T ideal×5, marginal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 09:00: wind 0.45 m/s < 0.83 m/s → near-calm/inversion",
+          "after 16:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-30T19:00:00",
+         "end": "2026-07-31T00:00:00",
+         "reason": "5h suitable (Delta T marginal×2, ideal×3; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 19:00: Delta T 10.10 °C > 10.0 → unsuitable"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 3 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 126.71,
+      "current_depletion_mm": 121.27,
+      "etc_tomorrow_mm": 3.98,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 125.25,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 17,
+       "marginal": 5,
+       "unsuitable": 2
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-28T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    },
+    {
+     "run_date": "2026-07-30",
+     "target_date": "2026-07-31",
+     "advisory": {
+      "date": "2026-07-31",
+      "irrigation": {
+       "target_date": "2026-07-31",
+       "should_irrigate_tomorrow": true,
+       "recommended_depth_mm": 120.4,
+       "current_depletion_mm": 120.36,
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): depletion 120.4mm >= RAW 67.5mm, so irrigate to refill the deficit. Note: depletion is as of last history hour 2026-07-29T23:00:00 (not carried forward to run_date)",
+       "evidence": []
+      },
+      "spray": {
+       "target_date": "2026-07-31",
+       "can_spray_tomorrow": true,
+       "recommended_windows": [
+        {
+         "start": "2026-07-31T00:00:00",
+         "end": "2026-07-31T14:00:00",
+         "reason": "14h suitable (Delta T ideal×13, marginal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "after 13:00: Delta T 10.20 °C > 10.0 → unsuitable"
+         ]
+        },
+        {
+         "start": "2026-07-31T21:00:00",
+         "end": "2026-07-31T23:00:00",
+         "reason": "2h suitable (Delta T marginal×1, ideal×1; wind ok; rain-fast)",
+         "limiting_factors": [
+          "before 21:00: Delta T 11.00 °C > 10.0 → unsuitable",
+          "after 22:00: wind 0.30 m/s < 0.83 m/s → near-calm/inversion"
+         ]
+        }
+       ],
+       "limiting_factors": [],
+       "confidence": 0.85,
+       "rationale": "Deterministic (no model): 2 candidate window(s) cleared all four gates; presented without further selection.",
+       "evidence": []
+      },
+      "summary": "Irrigate and spray can both proceed; drip wets the root zone, not the canopy, so they do not interact. Order by convenience.",
+      "conflicts_resolved": [
+       "daylight inferred from GHI coverage ~07:00–21:00; irrigation suggested after sunset (~21:00)",
+       "a spray window reaches outside daylight, near the after-sunset irrigation period → review sequencing",
+       "0 mm forecast rain within 2h after spray windows → no rain-fastness conflict",
+       "drip irrigation wets the root zone, not the canopy → no fungicide washoff / leaf-wetness conflict"
+      ],
+      "overall_confidence": 0.85
+     },
+     "features": {
+      "cumulative_etc_mm": 125.8,
+      "current_depletion_mm": 120.36,
+      "etc_tomorrow_mm": 4.24,
+      "forecast_rain_tomorrow_mm": 0.0,
+      "effective_rain_tomorrow_mm": 0.0,
+      "projected_depletion_mm": 124.59,
+      "should_irrigate_trigger": true,
+      "raw_mm": 67.5,
+      "taw_mm": 150.0,
+      "kc": 0.7,
+      "mad_fraction": 0.45,
+      "effective_rain_fraction": 0.8,
+      "band_counts": {
+       "ideal": 15,
+       "marginal": 2,
+       "unsuitable": 7
+      },
+      "notes": [
+       "depletion is as of last history hour 2026-07-29T23:00:00 (not carried forward to run_date)"
+      ]
+     },
+     "quality": {
+      "rows_loaded": 888,
+      "gap_count": 0,
+      "max_gap_hours": 0,
+      "nan_cells": 1776,
+      "spray_critical_nan_cells": 0,
+      "confidence_penalty": 0.15,
+      "notes": []
+     }
+    }
+   ]
+  }
+ ]
+}
