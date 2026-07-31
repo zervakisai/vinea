@@ -31,6 +31,16 @@ class Objective:
     window_days: int
     higher_is_better: bool
     unit: str
+    # Does breaching this warrant interrupting someone? ADR-010 already drew this
+    # line in prose -- "the degraded-rate objective never pages, because nothing is
+    # broken for a grower when it breaches" -- and prose is not enforceable. It is a
+    # field so the notifier can carry the distinction to whatever reads the message,
+    # rather than every consumer rediscovering which of the three is urgent.
+    #
+    # Not "should we send it": a breach that is not urgent is still a breach, and
+    # dropping it means the only way to learn the fleet went fully deterministic is
+    # to go and look, which is the problem the notifier exists to solve.
+    pages: bool = True
 
     def is_met(self, value: float | None) -> bool | None:
         """None in, None out -- an unmeasured objective is not a met one.
@@ -73,6 +83,10 @@ JUDGEMENT_RATE = Objective(
     window_days=7,
     higher_is_better=False,
     unit="fraction",
+    # Nothing is broken for a grower when this breaches -- they got an advisory,
+    # computed from the same numbers, without the model's framing. Waking someone
+    # for a correct answer is how a rota learns to ignore its pager.
+    pages=False,
 )
 
 OBJECTIVES = (AVAILABILITY, READ_LATENCY, JUDGEMENT_RATE)

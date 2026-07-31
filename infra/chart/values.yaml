@@ -18,6 +18,20 @@ uiImage:
 # Secret: the house rule is that secrets do not live in tracked files, and in
 # Kubernetes the manifests are tracked. Create it out of band, from a SealedSecret
 # (see infra/sealed-secrets/README.md) or `kubectl create secret`.
+#
+# Keys it is expected to carry:
+#   DATABASE_URL             required
+#   VINEA_API_KEYS           required -- "key:tenant" pairs
+#   VINEA_OPS_KEY            required -- the cross-tenant operator key
+#   ANTHROPIC_API_KEY | ...  the provider key, unless the gateway holds it
+#   VINEA_GATEWAY_KEY        when gateway.enabled
+#   LANGFUSE_PUBLIC_KEY      } when langfuse.host is set; the host itself is not
+#   LANGFUSE_SECRET_KEY      } a secret and lives in values, below
+#   VINEA_ALERT_WEBHOOK_URL  optional -- where `slo check` announces a breach.
+#                            In the Secret and not in values because a Slack or
+#                            Discord webhook URL is a bearer credential wearing a
+#                            URL's clothes, and `helm get values` is readable by
+#                            anyone who can read the release.
 secret:
   name: vinea-secrets
 

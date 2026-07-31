@@ -390,8 +390,11 @@ def test_an_idle_window_reports_no_data_not_excellent_latency(committing_db):
 def test_check_exits_non_zero_and_records_a_breach(committing_db, monkeypatch):
     """The SLO equivalent of `alembic check`: one question, one exit code.
 
-    Not alerting -- nothing notifies anyone. The row is what makes "how long have
-    we been in breach" answerable, which a live query cannot say.
+    The row is what makes "how long have we been in breach" answerable, which a
+    live query cannot say. Whether anyone is *told* is a separate concern with its
+    own file (`test_alerting.py`) -- and separate on purpose, because the exit code
+    and the row must both hold with no webhook configured, which is the state this
+    test runs in.
     """
     from sqlalchemy import func, select
 

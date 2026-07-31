@@ -237,6 +237,40 @@ def test_the_worker_is_wired_to_the_gateway_and_the_ui_is_not():
 
 
 @helm_required
+def test_the_alert_webhook_reaches_the_slo_job_without_appearing_in_the_manifests():
+    """The URL is a credential, so it may only arrive through the Secret.
+
+    A Slack webhook URL is a bearer token wearing a URL's clothes: anyone holding it
+    can post as the workspace. That rules out `values.yaml` — readable to anyone who
+    can `helm get values` — and rules out an explicit `env:` entry, which would put
+    it in the rendered manifest and therefore in whatever applies it.
+
+    Which leaves the `envFrom: secretRef` that `vinea.env` already applies to every
+    workload. This test is the guard against a future 'convenience' that adds
+    `alerts.webhookUrl` to values: the SLO job must be able to read the variable,
+    and no template may name it.
+    """
+    rendered = _render()
+    slo_docs = [doc for doc in rendered.split("---") if "component: slo-check" in doc]
+    assert slo_docs, "no rendered slo-check manifest"
+
+    # Comments stripped first. Helm renders them through, and the CronJob's own
+    # comment explains this design -- documentation naming the variable is the
+    # opposite of a leak, while a `name:` entry beside it is the thing to prevent.
+    configuration = "\n".join(
+        line for line in rendered.splitlines() if not line.lstrip().startswith("#")
+    )
+    assert "VINEA_ALERT_WEBHOOK_URL" not in configuration, (
+        "the webhook URL is a credential; it must arrive via envFrom secretRef, "
+        "never as a templated env value"
+    )
+    for doc in slo_docs:
+        assert "secretRef" in doc, (
+            "the SLO job cannot reach the webhook URL: it reads no Secret"
+        )
+
+
+@helm_required
 def test_an_external_gateway_renders_no_gateway_workload():
     """Somebody else operates it: point at it and render nothing to run."""
     rendered = _render("gateway.enabled=true", "gateway.externalUrl=https://llm.example.com")

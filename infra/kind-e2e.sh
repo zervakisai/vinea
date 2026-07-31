@@ -95,10 +95,16 @@ step "secret"
 # comes from a SealedSecret -- see infra/sealed-secrets/README.md. Either way the
 # chart only ever references it by name.
 kubectl delete secret vinea-secrets --ignore-not-found >/dev/null
+#
+# VINEA_ALERT_WEBHOOK_URL points at a collector this script starts later. DNS
+# resolves at request time, so the Service does not have to exist yet -- and the
+# variable has to be in the Secret from the start, because `envFrom` is read when a
+# pod is created and the whole point is to exercise the chart's own wiring.
 kubectl create secret generic vinea-secrets \
   --from-literal=DATABASE_URL='postgresql+psycopg://vinea:vinea@postgres:5432/vinea' \
   --from-literal=VINEA_API_KEYS='key-acme:acme' \
-  --from-literal=VINEA_OPS_KEY='ops-secret' >/dev/null
+  --from-literal=VINEA_OPS_KEY='ops-secret' \
+  --from-literal=VINEA_ALERT_WEBHOOK_URL='http://alert-sink:8000/hook' >/dev/null
 
 step "helm upgrade --install"
 # --wait blocks until every workload is Ready, and the pre-upgrade hook Job must
@@ -333,6 +339,85 @@ step "assert: the SLO check runs and reports"
 in_cluster slo-cmd python -m vinea.slo report >/dev/null \
   || { echo "python -m vinea.slo report failed" >&2; exit 1; }
 echo "slo report: ran"
+
+step "assert: a breach reaches the webhook the Secret configured"
+# The unit tests prove `notify()` posts JSON. What only a cluster can prove is that
+# the URL actually arrives in the pod: the chart deliberately does NOT template
+# VINEA_ALERT_WEBHOOK_URL as an env entry -- it is a bearer credential and would end
+# up in the rendered manifest -- so it reaches the job through the `envFrom:
+# secretRef` in `vinea.env`. A wiring bug there looks exactly like "nothing was
+# breached", which is the silent failure this step exists to prevent.
+kubectl delete svc alert-sink --ignore-not-found >/dev/null 2>&1
+kubectl delete pod alert-sink --ignore-not-found --wait=true >/dev/null 2>&1
+kubectl run alert-sink --image=vinea:e2e --image-pull-policy=Never --port=8000 \
+  --command -- python -c '
+import json
+from http.server import BaseHTTPRequestHandler, HTTPServer
+class H(BaseHTTPRequestHandler):
+    def do_POST(self):
+        n = int(self.headers.get("Content-Length", 0))
+        body = json.loads(self.rfile.read(n))
+        print("WEBHOOK-RECEIVED " + json.dumps(body["breaches"]), flush=True)
+        self.send_response(204)
+        self.end_headers()
+    def log_message(self, *a):
+        pass
+HTTPServer(("0.0.0.0", 8000), H).serve_forever()
+' >/dev/null
+kubectl expose pod alert-sink --port=8000 --target-port=8000 >/dev/null
+kubectl wait --for=condition=Ready pod/alert-sink --timeout=180s >/dev/null
+
+# Seed a breach that does not depend on what the rest of this run happened to do.
+in_cluster slo-seed python -c "
+from sqlalchemy import text
+from sqlmodel import Session
+from vinea.db.session import make_engine, scope_to_ops
+from vinea.slo.queries import SLO_READ_ROUTE
+with Session(make_engine()) as s:
+    scope_to_ops(s)
+    for _ in range(20):
+        s.execute(text('INSERT INTO api_request_samples (route, method, status_code, duration_ms) '
+                       \"VALUES (:r, 'GET', 200, 4000.0)\"), {'r': SLO_READ_ROUTE})
+    s.commit()
+print('seeded')
+" >/dev/null || { echo "could not seed a breach" >&2; exit 1; }
+
+# From the CronJob, not a hand-built pod: `--from=cronjob/...` copies the real pod
+# template, which is what carries the envFrom. Building the pod here would test this
+# script's idea of the deployment instead of the deployment.
+kubectl delete job slo-notify-e2e --ignore-not-found --wait=true >/dev/null 2>&1
+kubectl create job slo-notify-e2e --from="cronjob/${RELEASE}-vinea-slo-check" >/dev/null
+# `kubectl wait` with a selector errors out immediately if nothing matches yet, so
+# let the pod exist before waiting on its phase.
+for _ in $(seq 1 60); do
+  [[ -n "$(kubectl get pod -l job-name=slo-notify-e2e -o name 2>/dev/null)" ]] && break
+  sleep 1
+done
+# The job is EXPECTED to fail: a breach exits 1 and backoffLimit is 0. Waiting for
+# `complete` would hang for the full timeout on a correct run, so wait for the pod
+# to stop instead.
+kubectl wait --for=jsonpath='{.status.phase}'=Failed pod -l job-name=slo-notify-e2e \
+  --timeout=240s >/dev/null || {
+    echo "the SLO job did not fail on a seeded breach -- did it measure anything?" >&2
+    kubectl logs -l job-name=slo-notify-e2e --tail=40 >&2 || true
+    exit 1
+  }
+slo_out=$(kubectl logs -l job-name=slo-notify-e2e --tail=40 2>/dev/null)
+echo "$slo_out" | grep -q "notified" \
+  || { echo "the job did not report notifying anyone:"; echo "$slo_out"; exit 1; } >&2
+
+sink=$(kubectl logs pod/alert-sink --tail=20 2>/dev/null | grep "WEBHOOK-RECEIVED" || true)
+[[ -n "$sink" ]] || {
+  echo "nothing reached the webhook. VINEA_ALERT_WEBHOOK_URL did not survive the chart:" >&2
+  echo "$slo_out" >&2
+  exit 1
+}
+echo "$sink" | grep -q "read_latency_p95_ms" \
+  || { echo "the webhook got something other than the seeded breach: $sink" >&2; exit 1; }
+echo "webhook: ${sink#WEBHOOK-RECEIVED }"
+kubectl delete job slo-notify-e2e --ignore-not-found >/dev/null 2>&1
+kubectl delete svc alert-sink --ignore-not-found >/dev/null 2>&1
+kubectl delete pod alert-sink --ignore-not-found --wait=false >/dev/null 2>&1
 
 code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ops/queue -H 'X-API-Key: key-acme')
 [[ "$code" == "403" || "$code" == "401" ]] || { echo "tenant key reached /ops (got $code)" >&2; exit 1; }

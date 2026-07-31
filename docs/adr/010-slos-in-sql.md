@@ -89,13 +89,46 @@ hide the problem.
 >
 > **`python -m vinea.slo check` exists**, exits non-zero on a breach, and records a
 > row in `slo_breaches`. The rejected alternative below was *alerting from a
-> nightly job*, and this is not that: nothing notifies anyone. It is the SLO
+> nightly job*, and this is not that: nothing notifies anyone yet — see the
+> 2026-07-31 amendment immediately below, which is where that changes. It is the SLO
 > equivalent of `alembic check` — one question, one exit code, runnable by a
 > person, by cron, or by CI. What the table adds is **duration**: whether we are in
 > breach is answerable from the samples, how long we have been is not.
 >
-> **No notification path, still.** That limit holds until somebody is on a rota,
-> for the reason given below.
+> **Amended 2026-07-31 — there is a notification path now.** The paragraph
+> below deferred it *"until somebody is on a rota"*, and what changed is not the
+> system: one operator watching one channel is a rota of one, and that is the
+> honest reason rather than a new technical argument.
+>
+> `slo check` posts breaches to `VINEA_ALERT_WEBHOOK_URL` when one is set. Unset is
+> the default and a supported state — the row is still written and the exit code
+> still non-zero, exactly as before.
+>
+> Three properties it must have, each with a test:
+>
+> - **A dead webhook cannot fail the check.** An alert path that can turn its own
+>   monitor red teaches the operator that a red `slo check` might just mean Slack
+>   was down, and the exit code stops carrying information.
+> - **Unmeasured never notifies.** `met is None` is not a breach, here for the same
+>   reason it is not one for the exit code. A notifier filtering on `not met` would
+>   post every morning the latency table was empty.
+> - **The URL never reaches a log.** A Slack webhook URL is a bearer credential
+>   wearing a URL's clothes, so the failure path logs the exception type and, for an
+>   HTTP error, the status — enough to separate *unreachable* from *rejected* from
+>   *timed out*, which is every diagnosis it needs to support.
+>
+> And the *"degraded rate never pages"* rule below moved out of prose and into
+> `Objective.pages`. It is still **sent** — the fleet going fully deterministic is
+> worth knowing — but flagged `urgent: false` in the payload, so the consumer can
+> route it somewhere quieter. Suppressing it entirely would mean the only way to
+> learn is to look, which is the problem the notifier exists to solve.
+>
+> What is still not here: deduplication. A breach that persists notifies once each
+> morning. That is intended — the availability window is 30 days, so a breach can
+> persist for weeks, and going quiet after the first message makes an unresolved
+> breach indistinguishable from a resolved one. Muting is the reader's job; every
+> plausible target has a mute button, and none of them can un-drop a message this
+> process decided not to send.
 
 ### Why read latency is declared and not collected
 
@@ -133,7 +166,9 @@ alert must name the promise it protects.
 
 And the degraded-rate objective **never pages**, because nothing is broken for a
 grower when it breaches. Waking someone for a correct answer is how a rota learns
-to ignore its pager.
+to ignore its pager. That sentence is now `Objective.pages=False` rather than
+prose, and the message it produces says `SLO notice` where the other two say
+`SLO BREACH`.
 
 ## The three debts
 
@@ -205,6 +240,12 @@ infrastructure, and it can only notice a breach as often as it runs — which fo
 06:00 promise means noticing at 06:00. Deferred rather than rejected: it is the
 right first step when someone is on a rota, and pointless before that.
 
+> **Adopted 2026-07-31.** This is what shipped, unchanged in shape: a daily job, a
+> row, and now a POST. The limitation stated here is real and accepted — a breach
+> at 06:10 is announced at 06:05 the *next* morning. Continuous evaluation is what
+> a metrics backend buys, and it is still not worth three services for a rota of
+> one. See the amendment at the top of the Rationale.
+
 ## Consequences
 
 **We accept:**
@@ -213,7 +254,11 @@ right first step when someone is on a rota, and pointless before that.
 - The SLIs are computed over a synthetic fleet. There is no production traffic
   here, and every advisory in the database was written by a test. The machinery is
   real; the numbers are about seeded rows, and the phase doc says so.
-- Breaches are noticed when someone looks. There is no notification path.
+- ~~Breaches are noticed when someone looks. There is no notification path.~~
+  Superseded 2026-07-31. A breach is now announced to `VINEA_ALERT_WEBHOOK_URL` —
+  once, on the morning the daily job next runs, which for a breach at 06:10 means
+  roughly 24 hours later. That latency is what we accept in place of a metrics
+  backend that evaluates continuously.
 - `grower_config.timezone` is nullable, so the availability number is only as good
   as the config behind it — deliberately, and it fails toward *pessimism*.
 

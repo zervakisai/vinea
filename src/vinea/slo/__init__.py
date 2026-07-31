@@ -1,7 +1,7 @@
 """Service level objectives, measured in SQL over rows that already exist.
 
-Three objectives, and each is a question about the tables this system has been
-has been filling since it started storing anything:
+Three objectives, and each is a question about tables this system has been filling
+since it started storing anything:
 
   **Advisory availability** -- did an advisory exist by 06:00 in the grower's own
   morning? `advisories.created_at` and `grower_config.timezone`.
@@ -20,14 +20,21 @@ problem, not a definition problem -- and defining them in SQL means the
 definition is checkable by anyone with psql and no agreement about label
 cardinality.
 
-`python -m vinea.slo check` exits non-zero on a breach and records a row in
-`slo_breaches`, which is how "how long have we been in breach" becomes
-answerable -- a live query can only say whether we are.
+`python -m vinea.slo check` exits non-zero on a breach, records a row in
+`slo_breaches` -- which is how "how long have we been in breach" becomes
+answerable, since a live query can only say whether we are -- and posts the
+breaches to `VINEA_ALERT_WEBHOOK_URL` when one is configured.
 
 What this package deliberately does not contain: a scrape endpoint nothing
-scrapes, and anything that notifies a human. ADR-010 explains both.
+scrapes, and an alerting daemon. ADR-010 explains both, and its amendment explains
+why the notification it once deferred now exists.
 """
 
+# `notify` is deliberately NOT re-exported here. The submodule is `vinea.slo.notify`
+# and its main function is `notify()`; binding the function on the package would
+# shadow the module, so `from vinea.slo import notify` would hand a caller a
+# function where it expected a namespace -- and `notify.webhook_url()` would raise
+# AttributeError at the moment the daily job tried to alert. Import the module.
 from vinea.slo.objectives import (
     OBJECTIVES,
     ErrorBudget,

@@ -5,10 +5,15 @@
 # fail every tenant whose advisory is still being written; later and nobody sees
 # the breach on the morning it happened.
 #
-# This is not alerting. Nothing here notifies anyone -- ADR-010 declined a
-# notification path until somebody is on a rota. What it does is exit non-zero and
-# write to `slo_breaches`, so the CronJob's own failure count becomes the signal
-# and "how long have we been in breach" becomes a query.
+# Three outputs, in decreasing order of durability: a row in `slo_breaches`, a
+# non-zero exit (so the CronJob's own failure count is a signal), and a POST to
+# VINEA_ALERT_WEBHOOK_URL if the Secret carries one.
+#
+# The webhook URL lives in the Secret, not in values.yaml, and is picked up through
+# the `envFrom: secretRef` that `vinea.env` already applies -- a Slack or Discord
+# webhook URL is a bearer credential wearing a URL's clothes, and `helm get values`
+# is readable by anyone who can read the release. Unset is a supported state: the
+# breach is still recorded and the job still fails.
 apiVersion: batch/v1
 kind: CronJob
 metadata:

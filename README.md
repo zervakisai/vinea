@@ -258,7 +258,7 @@ Three objectives, measured in SQL over rows the system already stores:
 
 ```bash
 python -m vinea.slo report        # the table, with error budgets
-python -m vinea.slo check         # exit 1 on a breach; records it
+python -m vinea.slo check         # exit 1 on a breach; records it; announces it
 python -m vinea.context           # what is actually in each prompt
 python -m vinea.rag search "…"    # what a citation lookup returns
 python -m vinea.jobs work         # drain the queue by hand
@@ -274,6 +274,15 @@ to check first, what to do — including *nothing* — and what waiting costs ag
 budget. The degraded-rate objective never pages: nothing is broken for a grower when
 it breaches, and waking someone for a correct answer is how a rota learns to ignore
 its pager.
+
+A breach is announced to `VINEA_ALERT_WEBHOOK_URL` — Slack, Discord, ntfy, anything
+that takes a JSON POST — with the number, the target, the error budget and a link to
+the runbook, because a message that says only *"SLO breached"* sends the reader
+looking for the runbook at exactly the moment they are least able to. Unset is a
+supported state and the default: the breach is still recorded and the exit code is
+still 1. A webhook that is down can never fail the check — an alert path that can
+turn its own monitor red is worse than none, because the exit code stops meaning
+anything.
 
 ## Tracing
 

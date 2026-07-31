@@ -738,11 +738,14 @@ class ApiRequestSample(SQLModel, table=True):
 
 
 class SLOBreach(SQLModel, table=True):
-    """One recorded breach of one objective. History, not alerting.
+    """One recorded breach of one objective. History, not the alert.
 
-    `python -m vinea.slo check` writes a row when an objective is not met. The
-    distinction from an alert matters: nothing here notifies anyone, and ADR-010
-    declined a notification path until somebody is on a rota.
+    `python -m vinea.slo check` writes a row when an objective is not met, and --
+    separately, afterwards, and only if `VINEA_ALERT_WEBHOOK_URL` is set -- posts a
+    message about it. The row comes first and is committed before the post is
+    attempted: the record is what survives a crash, a rate limit, or a webhook that
+    has been quietly returning 404 for a month. A notification is a courtesy to
+    whoever is awake.
 
     What this buys that a dashboard query cannot is *duration*. "Are we in breach"
     is answerable from the samples; "how long have we been" is not, because
