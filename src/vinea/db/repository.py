@@ -319,3 +319,55 @@ def get_citations(session: Session, *, advisory_id: int) -> list:
             .order_by(AdvisoryCitation.leg, AdvisoryCitation.rank)
         )
     )
+
+
+def save_annotation(
+    session: Session,
+    *,
+    advisory_id: int,
+    reviewer_role: str,
+    reviewer_id: str,
+    verdict: str,
+    leg: str | None = None,
+    comment: str | None = None,
+):
+    """One human judgement about one advisory. Flushes; the caller commits.
+
+    The check constraints on `annotations` are the validation: a verdict outside
+    {agree, disagree, unclear} or a leg outside the three named ones fails at
+    write time rather than becoming a fourth category nothing handles. This
+    function does not pre-validate them -- doing so would fork the rule between
+    Python and the schema, and the two would drift (the same argument as
+    `ck_api_keys_scope_tenant`).
+    """
+    from vinea.db.models import Annotation, ReviewerRole
+
+    row = Annotation(
+        advisory_id=advisory_id,
+        reviewer_role=ReviewerRole(reviewer_role),
+        reviewer_id=reviewer_id,
+        verdict=verdict,
+        leg=leg,
+        comment=comment,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def list_annotations(session: Session, *, advisory_id: int) -> list:
+    """Every judgement recorded for one advisory, oldest first.
+
+    Oldest first because the sequence is the story: an agronomist's 'disagree'
+    followed by a farmer's 'agree' reads differently from the reverse, and a
+    UI that re-sorts by newest can do so -- unsorting is harder.
+    """
+    from vinea.db.models import Annotation
+
+    return list(
+        session.exec(
+            select(Annotation)
+            .where(Annotation.advisory_id == advisory_id)
+            .order_by(Annotation.created_at, Annotation.id)
+        )
+    )

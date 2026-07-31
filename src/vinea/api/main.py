@@ -57,6 +57,27 @@ def get_engine() -> Engine:
     return _engine
 
 
+def current_engine() -> Engine:
+    """The engine, for code that runs outside the dependency graph.
+
+    Middleware and the auth helpers cannot take `Depends(get_engine)` -- middleware
+    runs before routing and auth is called from middleware -- so they need another
+    way in. Calling `get_engine()` directly is the obvious one and it is wrong:
+    `app.dependency_overrides` is how a test points the app at a scratch database,
+    and code that bypasses it writes to whatever `DATABASE_URL` names instead.
+
+    The latency middleware called `get_engine()` directly. That is currently
+    harmless -- `VINEA_TEST_DATABASE_URL` and `DATABASE_URL` name the same database
+    locally and in CI, so both paths reach the same rows -- and it is harmless by
+    coincidence rather than by design. The first test to point the app at a scratch
+    database would have found the middleware writing somewhere else and swallowing
+    the mismatch into a `debug` log, which surfaces as the objective reporting "no
+    data": honest, per ADR-010, and honestly reporting a bug.
+    """
+    override = app.dependency_overrides.get(get_engine)
+    return override() if override is not None else get_engine()
+
+
 def get_session(engine: Engine = Depends(get_engine)) -> Iterator[Session]:
     """One session per request. The route owns the transaction (commits on write).
 
@@ -143,9 +164,22 @@ async def record_request_latency(request, call_next):
 
     matched = request.scope.get("route")
     route = getattr(matched, "path", "") or ""
+
+    # The access log, for every route that authenticated -- not just the two timed
+    # ones. It happens here rather than in the auth dependency because a dependency
+    # runs before the route and cannot know the status: "this key asked for
+    # something that does not exist, forty times" is a 404 pattern, and a log that
+    # recorded only "authenticated: yes" would never show it.
+    #
+    # A rejected request is already logged by the dependency that rejected it, and
+    # `request.state.verification` is unset in that case, so nothing double-counts.
+    from vinea.api.auth import record_authenticated_call
+
+    record_authenticated_call(request, response.status_code)
+
     if request.method == "GET" and route in TIMED_ROUTES:
         try:
-            with Session(get_engine()) as session:
+            with Session(current_engine()) as session:
                 scope_to_ops(session)
                 session.add(
                     ApiRequestSample(

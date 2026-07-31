@@ -88,7 +88,10 @@ uv run pytest tests/test_ui.py -k never_imports -v
 
 # Live:
 uv run uvicorn vinea.api.main:app --port 8099 &
-VINEA_API_URL=http://localhost:8099 VINEA_UI_TENANT_KEY=key-acme \
-  VINEA_OPS_KEY=ops-secret uv run streamlit run src/vinea/ui/app.py
+# Keys are minted, not invented (ADR-012):
+#   python -m vinea.keys issue --tenant acme --label "local UI"
+#   python -m vinea.keys issue --ops --label "local ops"
+VINEA_API_URL=http://localhost:8099 VINEA_UI_TENANT_KEY=vinea_t_... \
+  VINEA_OPS_KEY=vinea_o_... uv run streamlit run src/vinea/ui/app.py
 # open http://localhost:8501 -- grower card, operator queue-depth chart, quality monitor
 ```

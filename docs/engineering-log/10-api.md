@@ -63,6 +63,16 @@ not fine in production, and the danger is precisely that it *works* — nothing 
 ever prompt you to replace it. `auth.py` is the seam; treat swapping it for OIDC or
 a real key store as a prerequisite for a first customer, not a nice-to-have.
 
+> **Closed 2026-07-31 by [ADR-012](../adr/012-api-keys-in-the-database.md).** Keys
+> are rows in `api_keys`: hashed, revocable with one `UPDATE`, with a label and a
+> `last_used_at`, and every call logged in `access_log`. The paragraph above turned
+> out to be right about the mechanism *and* about the danger — it worked for eight
+> more phases, and nothing prompted a replacement until somebody went looking for
+> what was still missing.
+>
+> The commands below are from before that, and `key-acme` no longer authenticates.
+> Mint one with `python -m vinea.keys issue --tenant acme --label "…"`.
+
 ## Try it
 
 ```bash

@@ -25,23 +25,42 @@ from vinea.deps import Deps
 pytestmark = pytest.mark.db
 
 TENANT = "acme"
-API_KEY = "key-acme"
-OTHER_KEY = "key-olivares"
 RUN_DATE = date(2025, 2, 8)
+
+# Filled by the `client` fixture: keys are minted per test now, not spelled out as
+# constants, because only their SHA-256 is stored and there is no way to write a
+# literal that authenticates.
+API_KEY = ""
+OTHER_KEY = ""
+OPS_KEY = ""
 
 
 @pytest.fixture
-def client(committing_db, monkeypatch):
-    """A TestClient wired to the test engine, with two tenants' keys set."""
-    monkeypatch.setenv("VINEA_API_KEYS", f"{API_KEY}:{TENANT},{OTHER_KEY}:olivares")
-    monkeypatch.setenv("VINEA_OPS_KEY", "ops-secret")
+def client(committing_db):
+    """A TestClient wired to the test engine, with real keys minted in the database.
+
+    Keys used to be a monkeypatched environment variable. They are rows now, so the
+    fixture mints them -- which also means these tests exercise the real lookup,
+    hash and all, rather than a dictionary the test wrote itself.
+    """
+    global API_KEY, OTHER_KEY, OPS_KEY
+    from vinea import keys
+
+    with open_ops_session(committing_db) as session:
+        API_KEY = keys.issue(session, tenant=TENANT, label="test acme").secret
+        OTHER_KEY = keys.issue(session, tenant="olivares", label="test olivares").secret
+        OPS_KEY = keys.issue(
+            session, tenant=None, scope=keys.OPS_SCOPE, label="test ops"
+        ).secret
+        session.commit()
+
     main.app.dependency_overrides[main.get_engine] = lambda: committing_db
     yield TestClient(main.app)
     main.app.dependency_overrides.clear()
 
 
-def _auth(key: str = API_KEY) -> dict[str, str]:
-    return {"X-API-Key": key}
+def _auth(key: str | None = None) -> dict[str, str]:
+    return {"X-API-Key": key or API_KEY}
 
 
 # --- S5.1: health + auth ----------------------------------------------------
@@ -188,7 +207,7 @@ def test_history_can_be_windowed(client, committing_db):
 def test_ops_queue_requires_the_ops_key(client):
     assert client.get("/ops/queue").status_code == 401
     assert client.get("/ops/queue", headers=_auth()).status_code == 401  # tenant key is wrong creds
-    r = client.get("/ops/queue", headers={"X-Ops-Key": "ops-secret"})
+    r = client.get("/ops/queue", headers={"X-Ops-Key": OPS_KEY})
     assert r.status_code == 200
 
 
@@ -199,5 +218,5 @@ def test_ops_queue_reports_depth(client, committing_db):
         q.enqueue(s, tenant=TENANT, run_date=RUN_DATE)
         q.enqueue(s, tenant="olivares", run_date=RUN_DATE)
         s.commit()
-    r = client.get("/ops/queue", headers={"X-Ops-Key": "ops-secret"})
+    r = client.get("/ops/queue", headers={"X-Ops-Key": OPS_KEY})
     assert r.json()["queued"] == 2

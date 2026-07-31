@@ -772,6 +772,154 @@ class SLOBreach(SQLModel, table=True):
     budget_exhausted: bool | None = Field(default=None, sa_column=Column(Boolean))
 
 
+class ApiKey(SQLModel, table=True):
+    """A credential that opens one tenant, stored as a hash it cannot be read back from.
+
+    Replaces `VINEA_API_KEYS` -- a comma-separated list of plaintext keys in an
+    environment variable, which had three problems that only a table fixes.
+
+    **It could not be revoked.** Removing a key from the variable means editing the
+    Secret and restarting every pod that reads it. Between "this key is compromised"
+    and "this key stops working" sat a deploy. Here it is one `UPDATE`, and the next
+    request fails.
+
+    **It was readable.** Anyone who could `kubectl describe pod`, read a shell's
+    environment, or open a `.env` had every tenant's credential in plaintext. Only
+    the SHA-256 is stored now, so the same access yields nothing usable.
+
+    **It had no history.** No record of when a key was issued, by whom, for what, or
+    whether it has been used since March. `label`, `created_at` and `last_used_at`
+    make "which of these can we retire" a query instead of a guess.
+
+    ## Why a plain SHA-256 and not bcrypt or argon2
+
+    Because these are not passwords. A password is low-entropy and human-chosen, so
+    a leaked hash is attacked by guessing likely inputs -- which is what a slow KDF
+    exists to make expensive. An API key here is 32 bytes from `secrets.token_*`.
+    There is no dictionary to try and no cost factor that makes 2^256 more
+    infeasible than it already is. What a slow KDF *would* add is 100 ms of CPU on
+    every authenticated request, paid on the grower-facing read path, to defend
+    against an attack that does not apply.
+
+    Being wrong about this in the other direction -- a fast hash over a user-chosen
+    secret -- is a real vulnerability, so the reasoning is written down here rather
+    than left as a choice someone must reverse-engineer.
+
+    ## Scope
+
+    `scope='tenant'` keys carry a tenant and open only it. `scope='ops'` keys carry
+    no tenant and open the cross-tenant `/ops/*` surface. One table, because they
+    are the same object with different reach, and two tables would mean two
+    revocation paths -- one of which would eventually be forgotten.
+    """
+
+    __tablename__ = "api_keys"
+    __table_args__ = (
+        UniqueConstraint("key_hash", name="uq_api_keys_hash"),
+        # A tenant key without a tenant would authenticate to nothing; an ops key
+        # with one would suggest a scoping that does not exist. The database refuses
+        # both rather than trusting every future caller to get it right.
+        CheckConstraint(
+            "(scope = 'tenant' AND tenant IS NOT NULL) OR (scope = 'ops' AND tenant IS NULL)",
+            name="ck_api_keys_scope_tenant",
+        ),
+        Index("ix_api_keys_tenant", "tenant"),
+        # Unique, and that is a guarantee rather than an index: two keys sharing a
+        # prefix would make `keys revoke <prefix>` ambiguous, and an ambiguous
+        # revoke resolves to "revoked something" while the compromised key lives on.
+        Index("uq_api_keys_prefix", "prefix", unique=True),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    # NULL for ops keys -- see the check constraint above.
+    tenant: str | None = Field(default=None, sa_column=Column(Text))
+    scope: str = Field(sa_column=Column(Text, nullable=False))
+    # What this key is for, in words: "acme nightly UI", "olivares mobile app".
+    # Required, because a key nobody can identify is a key nobody dares revoke.
+    label: str = Field(sa_column=Column(Text, nullable=False))
+    # The first characters of the key, in the clear, so `keys list` can show which
+    # row corresponds to a key someone is holding without storing the key.
+    prefix: str = Field(sa_column=Column(Text, nullable=False))
+    key_hash: str = Field(sa_column=Column(Text, nullable=False))
+
+    created_at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+    # Written at most once an hour per key (see `keys.verify`), because the value of
+    # this column is "was this used this month", not "was this used this second",
+    # and an UPDATE per request would put a write on the read path for no gain.
+    last_used_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    # Set, never deleted. A revoked key's history stays queryable, and the row keeps
+    # the hash so a key that reappears is recognisably the revoked one rather than
+    # an unknown one -- a different alert entirely.
+    revoked_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+    # Optional. Unset means "until revoked", which is honest: an expiry nobody
+    # chose is a rotation policy invented by a default.
+    expires_at: datetime | None = Field(default=None, sa_column=Column(DateTime(timezone=True)))
+
+
+class AccessLog(SQLModel, table=True):
+    """Who called what, with which key, and whether it worked.
+
+    Every authenticated request and every rejected one. The question it exists to
+    answer is not "how fast" -- `api_request_samples` answers that -- but "was this
+    key used from somewhere it should not have been", which is unanswerable from a
+    latency table because a latency table has no idea who was calling.
+
+    ## Why this is not two more columns on `api_request_samples`
+
+    They look like the same table and they are not, because they sample different
+    populations on purpose.
+
+    `api_request_samples` records **two GET routes**, deliberately, so that liveness
+    probes firing every few seconds cannot drown the few hundred requests a grower
+    actually makes -- an SLI measured over probe traffic reports the health of the
+    probe. This records **every authenticated call and every rejected one**,
+    including the writes and the `/ops/*` surface, because a security record that
+    omits the interesting routes is not a security record.
+
+    Merging them would force one of those two definitions to change, and the one
+    that changed would be quietly wrong. The duplicated columns are the price, and
+    it is a smaller price than an SLI whose denominator moved.
+
+    It also carries `tenant`, so it lives under a row policy. The latency table
+    deliberately does not, and putting it under one to serve this would add a policy
+    check to the SLO's hot path for nothing.
+
+    ## What `outcome` is for
+
+    A `status_code` says the request failed; `outcome` says *how the credential
+    failed*, which is the difference between a misconfigured client (`no_key`), an
+    expired rotation nobody completed (`expired`), a key that should already be dead
+    (`revoked`), and someone trying tenant names against a valid key
+    (`wrong_tenant`). Those want four different responses and one status code.
+    """
+
+    __tablename__ = "access_log"
+    __table_args__ = (
+        Index("ix_access_log_tenant_time", "tenant", "at"),
+        Index("ix_access_log_key_time", "api_key_id", "at"),
+    )
+
+    id: int | None = Field(default=None, primary_key=True)
+    at: datetime | None = Field(default=None, sa_column=_utcnow_column(nullable=False))
+    # NULL when the caller never authenticated -- an unknown key belongs to nobody.
+    # The row policy then hides it from every tenant and shows it under ops scope,
+    # which is exactly right: a failed attempt is an operator's business.
+    tenant: str | None = Field(default=None, sa_column=Column(Text))
+    # SET NULL rather than CASCADE: deleting a key must not erase the record of what
+    # it did. `prefix` below survives the row so the log is still readable.
+    api_key_id: int | None = Field(
+        default=None,
+        sa_column=Column(Integer, ForeignKey("api_keys.id", ondelete="SET NULL")),
+    )
+    # Denormalised, for the same reason `advisory_citations.locator` is: the id
+    # points at a row that may be deleted, this stays readable afterwards.
+    key_prefix: str | None = Field(default=None, sa_column=Column(Text))
+    route: str = Field(sa_column=Column(Text, nullable=False))
+    method: str = Field(sa_column=Column(Text, nullable=False))
+    status_code: int = Field(sa_column=Column(Integer, nullable=False))
+    outcome: str = Field(sa_column=Column(Text, nullable=False))
+
+
 class QueueDepthSample(SQLModel, table=True):
     """A point-in-time snapshot of how deep the queue is. Metrics, in the DB.
 

@@ -273,6 +273,7 @@ python -m vinea.slo check         # exit 1 on a breach; records it; announces it
 python -m vinea.context           # what is actually in each prompt
 python -m vinea.rag search "…"    # what a citation lookup returns
 python -m vinea.jobs work         # drain the queue by hand
+python -m vinea.keys list         # who holds a key, and when it was last used
 ```
 
 The error budget is stated in advance, because one chosen after the first breach is a
@@ -322,6 +323,22 @@ code: every connection runs as a non-superuser role, and a query that forgets it
 `WHERE tenant = …` returns **nothing** rather than everything. A session that
 declares no scope at all sees nothing, so forgetting is the safe direction.
 
+API keys are rows, not an environment variable — stored as a SHA-256, so a database
+dump holds no usable credential, and revoked with one `UPDATE` that takes effect on
+the next request rather than after a rolling restart.
+
+```bash
+python -m vinea.keys issue --tenant acme --label "nightly UI"   # printed once
+python -m vinea.keys list                                       # never shows a key
+python -m vinea.keys revoke vinea_t_AbCdEfGhIjKl
+python -m vinea.keys import-env                                 # upgrading? run this first
+```
+
+Every call and every rejection lands in `access_log` with *why* the credential
+failed — `unknown_key`, `revoked`, `expired`, `wrong_tenant` are four different
+situations behind one 401, and the one worth waking up for is invisible if they are
+collapsed.
+
 CI fails on any known dependency vulnerability and scans the built image. See
 [SECURITY.md](SECURITY.md) for the model, its limits, and what it deliberately does
 not do.
@@ -367,6 +384,7 @@ it. One has been reversed, by measurement.
 | [009](docs/adr/009-row-level-security.md) | Tenant isolation in the database, not in the queries |
 | [010](docs/adr/010-slos-in-sql.md) | SLOs measured in SQL |
 | [011](docs/adr/011-lexical-retrieval-only.md) | Lexical retrieval only — reversing 008's hybrid |
+| [012](docs/adr/012-api-keys-in-the-database.md) | API keys in the database, hashed and revocable |
 
 Several carry amendments rather than rewrites. ADR-010 recorded "Langfuse not
 deployed" as a *permanent* debt and that ruling has been retracted, because
@@ -398,6 +416,7 @@ src/vinea/  features · contracts · deps · reconcile     the agronomy
             jobs/     queue, scheduler, worker, degraded path
             obs/      tracing, instrumented run
             api/      FastAPI, auth, schemas
+            keys/     issue, verify, revoke; the `python -m vinea.keys` CLI
             ui/       Streamlit panels
             prompts/  name@label registry, cache, drift check
             evals/    oracles, asymmetric scoring, golden replay, retrieval scoring

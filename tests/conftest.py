@@ -135,7 +135,11 @@ _ALL_TABLES = (
     # Added when the SLO work landed. A table missing from this list does not
     # fail -- it leaks rows into the next test, which shows up as an unrelated
     # assertion about a percentile computed over somebody else's samples.
-    "api_request_samples, slo_breaches"
+    "api_request_samples, slo_breaches, "
+    # `access_log` before `api_keys`: the FK is ON DELETE SET NULL rather than
+    # CASCADE, and CASCADE on TRUNCATE follows the reference regardless -- listing
+    # both explicitly says what is being emptied instead of relying on that.
+    "access_log, api_keys"
 )
 
 

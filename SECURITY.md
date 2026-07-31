@@ -63,10 +63,16 @@ Enforced by Postgres row-level security (ADR-009), not by application code.
   policed directly; they reach a tenant only through `advisories.id`, with
   `ON DELETE CASCADE`. A leak there exposes a citation locator or a score, not a
   grower's advice.
-- API keys are a header-to-tenant mapping from the environment: a deliberate
-  "simple for now", with OIDC as a marked seam in `api/auth.py`. Keys are compared
-  with `==`, not a constant-time compare — noted because the mapping lookup is
-  already not constant-time and pretending otherwise would be worse.
+- API keys are rows in `api_keys`, stored as SHA-256 and revocable with one
+  `UPDATE` — effective on the next request, no restart (ADR-012). A database dump
+  contains no usable credential. The digest is deliberately *not* a slow KDF: these
+  are 32 bytes from `secrets.token_urlsafe`, not passwords, so there is no
+  dictionary to make expensive and bcrypt would only add latency to the
+  grower-facing read. The lookup is by hash equality on an indexed column, which is
+  not constant-time and does not need to be for a high-entropy secret.
+- OIDC remains the marked seam in `api/auth.py`: `authenticated_tenant` is one
+  dependency returning a tenant, and a JWT implementation replaces its body without
+  touching a route.
 
 ## Untrusted text reaching a prompt
 
@@ -131,8 +137,13 @@ nobody can act on is a gate that gets disabled.
 
 ## What this repository does not do
 
-- No authentication beyond a shared header key; no rate limiting; no audit log of
-  who read what.
+- No rate limiting. A valid key can be used as fast as the API will answer.
+- The access log can silently drop rows. Its write is wrapped and swallowed,
+  because an audit entry that can 500 a grower's morning read has inverted its own
+  priority — so an empty log is not proof an attempt did not happen (ADR-012).
+- `access_log` has no retention policy. It grows until somebody prunes it.
+- No authentication *identity* beyond the key: `label` is what a person typed, not
+  a verified actor.
 - No encryption at rest beyond whatever the Postgres deployment provides.
 - No signed images, no SBOM attestation, no provenance beyond `uv.lock`.
 - The `vinea_app` role has table-level grants on everything, not per-table least

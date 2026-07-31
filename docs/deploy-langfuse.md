@@ -97,8 +97,6 @@ and go in the Secret the chart already reads:
 ```bash
 kubectl create secret generic vinea-secrets \
   --from-literal=DATABASE_URL=… \
-  --from-literal=VINEA_API_KEYS=… \
-  --from-literal=VINEA_OPS_KEY=… \
   --from-literal=LANGFUSE_PUBLIC_KEY=pk-lf-… \
   --from-literal=LANGFUSE_SECRET_KEY=sk-lf-…
 

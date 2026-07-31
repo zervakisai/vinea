@@ -74,8 +74,9 @@ a comfort blanket.
 ```bash
 docker compose up -d postgres
 uv run uvicorn vinea.api.main:app --port 8099 &
-VINEA_API_URL=http://localhost:8099 VINEA_UI_TENANT_KEY=key-acme \
-  VINEA_OPS_KEY=ops-secret uv run streamlit run src/vinea/ui/app.py
+# ADR-012 moved keys into the database; mint them with `python -m vinea.keys issue`.
+VINEA_API_URL=http://localhost:8099 VINEA_UI_TENANT_KEY=vinea_t_... \
+  VINEA_OPS_KEY=vinea_o_... uv run streamlit run src/vinea/ui/app.py
 ```
 
 Then break the rule on purpose: add `from vinea.db import repository` to

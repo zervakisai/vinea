@@ -20,9 +20,27 @@ from vinea.api import main
 from vinea.ui.client import ApiClient, langfuse_trace_url
 
 TENANT = "acme"
-API_KEY = "key-acme"
-OPS_KEY = "ops-secret"
 RUN_DATE = date(2025, 2, 8)
+
+# Minted per test by `_mint_keys`, because only a SHA-256 is stored and no literal
+# can authenticate any more.
+API_KEY = ""
+OPS_KEY = ""
+
+
+def _mint_keys(engine, *, second_tenant: str | None = None) -> None:
+    """Issue the keys these tests present, straight into the test database."""
+    global API_KEY, OPS_KEY
+    from vinea import keys
+
+    with open_ops_session(engine) as session:
+        API_KEY = keys.issue(session, tenant=TENANT, label="ui test").secret
+        OPS_KEY = keys.issue(
+            session, tenant=None, scope=keys.OPS_SCOPE, label="ui test ops"
+        ).secret
+        if second_tenant:
+            keys.issue(session, tenant=second_tenant, label="ui test other")
+        session.commit()
 
 UI_DIR = Path(__file__).parent.parent / "src" / "vinea" / "ui"
 APP_PATH = str(UI_DIR / "app.py")
@@ -90,7 +108,11 @@ def api_client(committing_db, monkeypatch):
     TestClient instead of a socket, so the whole client<->API path is exercised
     offline, with the real routes, auth, and DB.
     """
-    monkeypatch.setenv("VINEA_API_KEYS", f"{API_KEY}:{TENANT}")
+    _mint_keys(committing_db)
+    # The UI is a *client*: it legitimately holds credentials in its environment.
+    # What changed is that they are now minted rather than invented, so this
+    # exercises the real lookup instead of a string both sides agreed on.
+    monkeypatch.setenv("VINEA_UI_TENANT_KEY", API_KEY)
     monkeypatch.setenv("VINEA_OPS_KEY", OPS_KEY)
     main.app.dependency_overrides[main.get_engine] = lambda: committing_db
     test_client = TestClient(main.app)
@@ -231,10 +253,10 @@ def app_test_env(committing_db, monkeypatch):
     that can't serialise, a KeyError in a panel) that a "did the server boot" check
     sails past. Seeds two tenants so every panel has data.
     """
-    monkeypatch.setenv("VINEA_API_KEYS", f"{API_KEY}:{TENANT},key-olivares:olivares")
-    monkeypatch.setenv("VINEA_OPS_KEY", OPS_KEY)
+    _mint_keys(committing_db, second_tenant="olivares")
     monkeypatch.setenv("VINEA_API_URL", "http://testserver")
     monkeypatch.setenv("VINEA_UI_TENANT_KEY", API_KEY)
+    monkeypatch.setenv("VINEA_OPS_KEY", OPS_KEY)
     main.app.dependency_overrides[main.get_engine] = lambda: committing_db
     test_client = TestClient(main.app)
 

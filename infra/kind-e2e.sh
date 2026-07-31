@@ -100,10 +100,12 @@ kubectl delete secret vinea-secrets --ignore-not-found >/dev/null
 # resolves at request time, so the Service does not have to exist yet -- and the
 # variable has to be in the Secret from the start, because `envFrom` is read when a
 # pod is created and the whole point is to exercise the chart's own wiring.
+#
+# No VINEA_API_KEYS and no VINEA_OPS_KEY. Keys live in `api_keys` now (ADR-012), and
+# they are minted after the migration hook has created the table -- which is why
+# that step is further down rather than here.
 kubectl create secret generic vinea-secrets \
   --from-literal=DATABASE_URL='postgresql+psycopg://vinea:vinea@postgres:5432/vinea' \
-  --from-literal=VINEA_API_KEYS='key-acme:acme' \
-  --from-literal=VINEA_OPS_KEY='ops-secret' \
   --from-literal=VINEA_ALERT_WEBHOOK_URL='http://alert-sink:8000/hook' >/dev/null
 
 step "helm upgrade --install"
@@ -115,6 +117,28 @@ helm upgrade --install "$RELEASE" "$ROOT/infra/chart" \
   --set image.repository=vinea --set image.tag=e2e \
   --set uiImage.repository=vinea-ui --set uiImage.tag=e2e \
   --wait --timeout 5m
+
+# Same tag, new image content. The Deployment spec is byte-identical to the last
+# run's, so helm computes no change and performs no rollout -- and the pods keep
+# serving the code from the previous build while every schema assertion below
+# passes, because those run in fresh one-shot pods that DO pull the new image.
+#
+# That is not hypothetical: it is how this script first reported a 401 from a key
+# it had just minted. The API pods were still running the build that read
+# VINEA_API_KEYS, which the Secret no longer carries.
+#
+# A production deploy never has this problem, because `helm upgrade` there changes
+# `image.tag` and the change is what triggers the rollout. A rebuild under a fixed
+# tag is the e2e's own shortcut, so the e2e pays for it here.
+step "force a rollout (same tag, new image)"
+for deployment in $(kubectl get deploy -l "app.kubernetes.io/instance=$RELEASE" -o name); do
+  kubectl rollout restart "$deployment" >/dev/null
+done
+for deployment in $(kubectl get deploy -l "app.kubernetes.io/instance=$RELEASE" -o name); do
+  kubectl rollout status "$deployment" --timeout=180s >/dev/null \
+    || { echo "$deployment did not roll out" >&2; exit 1; }
+done
+echo "rolled: $(kubectl get deploy -l "app.kubernetes.io/instance=$RELEASE" -o name | tr '\n' ' ')"
 
 step "assert: the migration hook ran and completed"
 kubectl get job -l app.kubernetes.io/component=migrate \
@@ -247,6 +271,7 @@ step "assert: two tenants with different weather get different advisories"
 tenants=$(in_cluster two-tenants python -c "
 from datetime import date
 from pathlib import Path
+from sqlalchemy import text
 from sqlmodel import Session
 from vinea import config
 from vinea.db import repository
@@ -260,8 +285,22 @@ from vinea.sources.persist import upsert_observations
 RUN = date(2026, 7, 28)
 SITES = {'e2e-nemea': (37.8125, 22.6875, 1.0), 'e2e-naoussa': (40.63, 22.07, 0.45)}
 d = Path(config.DEFAULT_DATA_DIR)
+# This script is re-runnable against a cluster it left up, and enqueue is
+# idempotent -- so on a second run the task already exists with status done,
+# claim_one returns nothing, and the step used to die on process_one(None).
+# (No backticks in here: this Python is inside a double-quoted shell string, so
+# bash would run them. It did: 'process_one(None): command not found'.)
+# Clearing the two tenants this step owns makes it do the work every time. The
+# alternative -- skipping when there is nothing to claim -- would pass by reading
+# the PREVIOUS run's advisory, which is a green result that is not evidence.
 hist, fc, _ = load_weather(sorted(d.glob('*last-30d*.csv'))[-1], sorted(d.glob('*next-7d*.csv'))[-1], RUN)
 eng = make_engine()
+with Session(eng) as s:
+    scope_to_ops(s)
+    for tenant in SITES:
+        s.execute(text('DELETE FROM advisories WHERE tenant = :t'), {'t': tenant})
+        s.execute(text('DELETE FROM advisory_tasks WHERE tenant = :t'), {'t': tenant})
+    s.commit()
 with Session(eng) as s:
     scope_to_ops(s)
     for tenant, (lat, lon, scale) in SITES.items():
@@ -276,7 +315,9 @@ with Session(eng) as s:
 for _ in SITES:
     with Session(eng) as s:
         scope_to_ops(s)
-        worker.process_one(s, queue.claim_one(s, worker_id='e2e'))
+        task = queue.claim_one(s, worker_id='e2e')
+        assert task is not None, 'nothing to claim: the queue was not seeded'
+        worker.process_one(s, task)
 out = []
 with Session(eng) as s:
     scope_to_ops(s)
@@ -293,6 +334,22 @@ b=$(echo "$tenants" | sed -n 's/.*e2e-naoussa=\([0-9.]*\).*/\1/p')
 [[ "$a" != "$b" ]] || { echo "both tenants got depletion $a -- one weather source for everybody" >&2; exit 1; }
 echo "per-tenant weather: nemea=$a naoussa=$b (differ, correct)"
 
+step "mint API keys with the CLI"
+# The bootstrap answer to "how does the first key exist" (ADR-012). Not a migration
+# -- one that minted a credential would write it into a file every deploy replays --
+# and not an endpoint, which would itself need a credential. So: a command, run by
+# someone with database access, after the schema exists.
+#
+# This is also the only place the e2e can prove the CLI works against a real
+# database, and it is the step that would fail if `api_keys` had not been created.
+tenant_key=$(in_cluster mint-tenant python -m vinea.keys issue --tenant acme --label "e2e smoke" \
+  | grep -o 'vinea_t_[A-Za-z0-9_-]*' | tail -1)
+[[ -n "$tenant_key" ]] || { echo "the CLI did not mint a tenant key" >&2; exit 1; }
+ops_key=$(in_cluster mint-ops python -m vinea.keys issue --ops --label "e2e ops" \
+  | grep -o 'vinea_o_[A-Za-z0-9_-]*' | tail -1)
+[[ -n "$ops_key" ]] || { echo "the CLI did not mint an ops key" >&2; exit 1; }
+echo "minted: ${tenant_key:0:20}... and ${ops_key:0:20}..."
+
 step "smoke test THROUGH the API, with a real key"
 # Not `curl /health`. A smoke test that proves a container started is theatre --
 # it would pass with an empty database and a broken schema. This one authenticates,
@@ -307,7 +364,7 @@ code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ready)
 echo "GET /ready -> 200"
 
 code=$(curl -s -o /dev/null -w '%{http_code}' -XPOST localhost:18080/advisories/acme/2026-07-28 \
-  -H 'X-API-Key: key-acme')
+  -H "X-API-Key: $tenant_key")
 [[ "$code" == "202" ]] || { echo "enqueue not 202 (got $code)" >&2; exit 1; }
 echo "POST /advisories/acme/2026-07-28 -> 202"
 
@@ -315,7 +372,7 @@ echo "POST /advisories/acme/2026-07-28 -> 202"
 # the worker has not run -- and that is the point: the middleware must record the
 # timing regardless of status, so the SLI reflects what the grower experienced.
 code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/advisories/acme/2026-07-28 \
-  -H 'X-API-Key: key-acme')
+  -H "X-API-Key: $tenant_key")
 [[ "$code" == "404" || "$code" == "200" ]] || { echo "advisory read gave $code" >&2; exit 1; }
 echo "GET /advisories/acme/2026-07-28 -> $code"
 
@@ -419,9 +476,42 @@ kubectl delete job slo-notify-e2e --ignore-not-found >/dev/null 2>&1
 kubectl delete svc alert-sink --ignore-not-found >/dev/null 2>&1
 kubectl delete pod alert-sink --ignore-not-found --wait=false >/dev/null 2>&1
 
-code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ops/queue -H 'X-API-Key: key-acme')
+code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ops/queue -H "X-API-Key: $tenant_key")
 [[ "$code" == "403" || "$code" == "401" ]] || { echo "tenant key reached /ops (got $code)" >&2; exit 1; }
 echo "tenant key on /ops/* -> $code (correctly refused)"
+
+code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/ops/queue -H "X-Ops-Key: $ops_key")
+[[ "$code" == "200" ]] || { echo "the minted ops key did not open /ops/queue (got $code)" >&2; exit 1; }
+echo "ops key on /ops/queue -> 200"
+
+step "assert: revocation takes effect without a restart"
+# The property the table exists for (ADR-012). Under VINEA_API_KEYS this needed a
+# Secret edit and a rolling restart, so between "this key is compromised" and "this
+# key stops working" sat a deploy. Nothing is restarted between these two curls --
+# and the API pods are the ones that were already running when the key was minted,
+# which is what makes this a test of the lookup rather than of process startup.
+in_cluster revoke-key python -m vinea.keys revoke "$tenant_key" >/dev/null \
+  || { echo "the CLI could not revoke the key" >&2; exit 1; }
+code=$(curl -s -o /dev/null -w '%{http_code}' localhost:18080/advisories/acme/2026-07-28 \
+  -H "X-API-Key: $tenant_key")
+[[ "$code" == "401" ]] || { echo "a revoked key still worked (got $code) -- something is caching" >&2; exit 1; }
+echo "revoked key -> 401 with no restart"
+
+step "assert: the access log recorded it, and says why"
+access=$(in_cluster access-log python -c "
+from sqlmodel import Session, select
+from vinea.db.models import AccessLog
+from vinea.db.session import make_engine, scope_to_ops
+with Session(make_engine()) as s:
+    scope_to_ops(s)
+    rows = s.exec(select(AccessLog).order_by(AccessLog.id)).all()
+print('rows=%d outcomes=%s' % (len(rows), ','.join(sorted({r.outcome for r in rows}))))
+")
+echo "$access" | grep -qE "rows=[1-9]" \
+  || { echo "nothing reached access_log: ${access:-<no output>}" >&2; exit 1; }
+echo "$access" | grep -q "revoked" \
+  || { echo "the revoked attempt was not recorded as such: $access" >&2; exit 1; }
+echo "access log: $access"
 
 step "PASS"
 # Explicit, so the exit status is this line and never whatever the EXIT trap

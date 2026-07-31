@@ -25,8 +25,6 @@ helm install sealed-secrets sealed-secrets/sealed-secrets -n kube-system
 kubectl create secret generic vinea-secrets \
   --dry-run=client -o yaml \
   --from-literal=DATABASE_URL='postgresql+psycopg://vinea:...@10.0.0.3:5432/vinea' \
-  --from-literal=VINEA_API_KEYS='key-acme:acme' \
-  --from-literal=VINEA_OPS_KEY='...' \
   --from-literal=ANTHROPIC_API_KEY='sk-ant-...' \
   | kubeseal --format yaml > infra/sealed-secrets/vinea-secrets.yaml
 
@@ -35,6 +33,12 @@ kubectl apply -f infra/sealed-secrets/vinea-secrets.yaml
 
 Note the pipe: the plaintext Secret is never written to disk. `kubectl create
 --dry-run=client -o yaml | kubeseal` is one process boundary, not two files.
+
+**API keys are not in here.** They are rows in `api_keys` (ADR-012), minted with
+`python -m vinea.keys issue` after the migration has run. Sealing them into this
+Secret would work and would give back the property the table exists for: revoking
+one would mean re-sealing, committing, applying, and restarting every pod that
+reads it.
 
 ## Why this and not External Secrets Operator
 

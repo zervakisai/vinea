@@ -188,3 +188,51 @@ class SLOStatus(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     database: str
+
+
+class AnnotationCreate(BaseModel):
+    """What a reviewer submits about one advisory.
+
+    No `advisory_id`: the advisory is addressed by the URL (tenant + run_date),
+    and accepting an id in the body would let a caller annotate an advisory the
+    path -- and therefore the auth check -- never looked at.
+
+    `reviewer_id` is who is speaking, as a label ("maria", "agronomist-on-call").
+    It is not authenticated identity -- the API key authenticates the *tenant* --
+    and pretending otherwise would be claiming a property the system does not
+    have. ADR-012's revisit trigger (an identity provider) is where that changes.
+    """
+
+    reviewer_role: str = Field(pattern="^(agronomist|farmer)$")
+    reviewer_id: str = Field(min_length=1, max_length=120)
+    verdict: str = Field(pattern="^(agree|disagree|unclear)$")
+    # None means "about the advisory as a whole" -- the normal case for a farmer
+    # judging the summary they actually read.
+    leg: str | None = Field(default=None, pattern="^(irrigation|spray|reconciliation)$")
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class AnnotationRead(BaseModel):
+    """One recorded judgement, as the API returns it."""
+
+    id: int
+    reviewer_role: str
+    reviewer_id: str
+    verdict: str
+    leg: str | None
+    comment: str | None
+    promoted_to_golden: bool
+    created_at: datetime
+
+    @classmethod
+    def from_row(cls, row) -> AnnotationRead:
+        return cls(
+            id=row.id,
+            reviewer_role=str(row.reviewer_role),
+            reviewer_id=row.reviewer_id,
+            verdict=row.verdict,
+            leg=row.leg,
+            comment=row.comment,
+            promoted_to_golden=row.promoted_to_golden,
+            created_at=row.created_at,
+        )
