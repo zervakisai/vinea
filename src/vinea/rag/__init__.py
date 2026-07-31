@@ -16,11 +16,12 @@ Four modules:
 
   `corpus`     the committed JSONL: chunks plus the source record that carries
                the CC BY 4.0 attribution the redistribution depends on.
-  `embedding`  an `Embedder` protocol, a static-model implementation, and a
-               deterministic stub so retrieval mechanics are testable with no
-               model and no network.
-  `store`      ingest into Postgres, and the hybrid query — pgvector for meaning,
-               `tsvector` for exact tokens, combined by Reciprocal Rank Fusion.
+  `queries`    what to ask, derived from the features already computed -- so the
+               retrieval a night performs depends on the state of that night's
+               water balance rather than on a fixed string.
+  `store`      ingest into Postgres, and the query that reads it back: full-text
+               search, OR-joined, ranked by length-normalised `ts_rank_cd`.
+               No embedder and no vectors (ADR-011).
   `retrieve`   the facade the agents call. Fails open to *no passages*, never to
                a weak one.
 

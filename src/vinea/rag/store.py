@@ -29,6 +29,59 @@ all nine terms in one chunk and matches NOTHING -- measured, 0 of 798 chunks.
 Re-joining with `|` and letting `ts_rank_cd` rank by term density and proximity is
 the whole retriever. That single character is worth more here than the entire
 vector pipeline it now replaces.
+
+## ...which makes the ranking, not the filter, the entire retriever
+
+The OR fixed a query that matched nothing and produced one that matches nearly
+everything: a typical question now passes the `@@` filter on **400 to 750 of the
+798 chunks**. The `WHERE` clause is barely a filter. Every question's answer is
+decided by `ts_rank_cd` alone, so the ranking function's parameters are not tuning
+-- they are the retrieval algorithm.
+
+Which is why the third argument is there. `ts_rank_cd` without it sums matched-term
+density and returns a number that grows with document length, so a long chunk
+outranks a short one for containing the same words more times. Normalisation `2`
+divides by document length -- the same correction BM25 exists to make. Measured
+over the 27 labelled questions:
+
+    variant                        r@1    r@3    r@5    MRR      (all 27)
+    text, no normalisation         0.37   0.78   0.81   0.553
+    text, /length                  0.52   0.81   0.85   0.674
+
+    variant                        r@1    r@3    r@5    MRR      (the 15 paraphrases)
+    text, no normalisation         0.27   0.67   0.67   0.445
+    text, /length                  0.47   0.73   0.73   0.607
+
+r@3 moved by one question, which alone would be noise. r@1 moved by four and MRR
+by 22% overall and 36% on the paraphrases, which is not -- the correct passage was
+already being retrieved and was being ranked below longer ones.
+
+**No migration.** Normalisation changes only the score, and the score is not
+indexed; the GIN index is on the expression in the `WHERE` clause, which is
+untouched. A ranking change that needed a schema change would be a warning that
+the ranking had been baked into storage.
+
+## The locator stays out of the tsvector, measured
+
+The obvious next lever was indexing `locator || '. ' || text`, since a locator like
+"Chapter 8 — ETc under soil water and salinity stress conditions" is real signal
+and the dense path had used exactly that string. It was measured and rejected:
+
+    variant                 orig 12   paraphrase 15   all 27   MRR
+    text, /length              0.92        0.73         0.81   0.674
+    loc+text, no norm          1.00        0.67         0.81   0.640
+    loc+text, /length          1.00        0.60         0.78   0.711
+
+It takes the *easy* half to a perfect score and costs two questions on the hard
+half -- and the hard half is the one phrased the way a grower speaks. The reason is
+visible in the failures: long section titles are mostly common words, so a question
+about a windy day ranks "ETc under soil water and salinity stress conditions" first
+for containing "water". The locator adds term frequency without adding aboutness,
+which is the exact thing length normalisation is there to punish, so the two levers
+work against each other.
+
+Same shape as the ADR-011 reversal, one level down: the change that looks
+principled scored better on the questions written by the person who built it.
 """
 
 from __future__ import annotations
@@ -56,9 +109,18 @@ WITH tsq AS (
 SELECT c.id,
        c.locator,
        c.text,
-       ts_rank_cd(to_tsvector('english', c.text), tsq.query) AS score
+       -- 2 = divide the rank by the document length. Without it `ts_rank_cd`
+       -- returns a raw density that grows with length, so a long chunk outranks a
+       -- short one for repeating the same words. Measured: r@1 0.37 -> 0.52, MRR
+       -- 0.553 -> 0.674 over the 27 labelled questions. This argument is the
+       -- retrieval algorithm, not a tuning knob -- see the module docstring for why
+       -- the ranking is doing all the work here.
+       ts_rank_cd(to_tsvector('english', c.text), tsq.query, 2) AS score
 FROM corpus_chunks AS c, tsq
 WHERE c.source = :source
+  -- Unchanged, and deliberately so: this is the expression the GIN index is built
+  -- on. Normalisation applies to the score alone, so ranking improved without a
+  -- migration.
   AND to_tsvector('english', c.text) @@ tsq.query
 ORDER BY score DESC, c.id
 LIMIT :top_k

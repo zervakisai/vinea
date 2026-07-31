@@ -57,6 +57,64 @@ no vectors written, no model in the image.**
 `corpus_chunks.embedding` and `embedding_model` remain as reserved, never-written
 columns, and the `vector` extension stays installed.
 
+> **Amended 2026-07-31 — the ranking is length-normalised, and the locator stays
+> out of the tsvector.** Both are stated here because this ADR's own logic implies
+> the first and appears to recommend the second.
+>
+> Reversing to lexical-only made `ts_rank_cd` the entire retriever, and nothing in
+> this document noticed. The `|`-joined query it celebrates turned "matches
+> nothing" into **matches 400–750 of 798 chunks for a typical question** — so the
+> `WHERE` clause is barely a filter and every answer is decided by the ranking
+> function alone. It was being called with default parameters.
+>
+> Adding normalisation `2` (divide by document length):
+>
+> | | r@1 | r@3 | r@5 | MRR |
+> |---|---|---|---|---|
+> | all 27, unnormalised | 0.37 | 0.78 | 0.81 | 0.553 |
+> | all 27, **/length** | **0.52** | **0.81** | **0.85** | **0.674** |
+> | paraphrase 15, unnormalised | 0.27 | 0.67 | 0.67 | 0.445 |
+> | paraphrase 15, **/length** | **0.47** | **0.73** | **0.73** | **0.607** |
+>
+> No migration: the score is not indexed, only the `WHERE` expression is.
+>
+> **What the default was actually doing** is worse than a length bias. For a focused
+> passage and the same passage padded with a page about something else, unnormalised
+> `ts_rank_cd` returns *the identical score* — cover density counts covers of query
+> terms and the padding contributes none — so the winner is the `ORDER BY` tiebreak,
+> `c.id`, which is the corpus builder's file order. The retriever had no opinion and
+> file order was casting the deciding vote.
+>
+> **The locator was measured and rejected**, though this ADR's "better chunking, not
+> a bigger embedder" line points straight at it and the deleted dense path had
+> indexed exactly that string:
+>
+> | variant | original 12 | paraphrase 15 | all 27 | MRR |
+> |---|---|---|---|---|
+> | text, /length | 0.92 | **0.73** | 0.81 | 0.674 |
+> | locator+text, no norm | 1.00 | 0.67 | 0.81 | 0.640 |
+> | locator+text, /length | 1.00 | 0.60 | 0.78 | 0.711 |
+>
+> It takes the easy half to a perfect score and costs two of the paraphrases. Long
+> section titles are mostly common words, so a question about a windy day ranks
+> *"ETc under soil water and salinity stress conditions"* first for containing
+> "water" — term frequency without aboutness, the exact thing length normalisation
+> exists to punish. The two levers work against each other.
+>
+> **The same failure as the one this ADR was written about**, one level down: the
+> change that looks principled scored best on the questions written by whoever
+> proposed it. The separate paraphrase floor is what caught it; a single averaged
+> number would have shown 0.81 either way and it would have shipped.
+>
+> **And recall@3 alone would not have caught the normalisation fix either** — it
+> moved by one question, 0.78 to 0.81, which over 27 questions is noise. r@1 moved by
+> four and MRR by 22%. The gate now holds an MRR floor for exactly this: removing
+> the normalisation leaves recall@3 at 0.78, above its floor, and MRR fails.
+>
+> Reproduce all of it with `uv run python scripts/measure_retrieval.py --misses`.
+> The rejected variants are still in that script, because "we tried the obvious
+> thing and it was worse" is only credible if the obvious thing can still be run.
+
 ## Rationale
 
 ### Because the numbers say so, and ADR-003 is the rule
@@ -118,7 +176,8 @@ refilled without the measurement above being redone.
 **We get:**
 
 - **Better recall**: 0.78 against 0.70 overall, 0.67 against 0.47 on the questions
-  that resemble real ones.
+  that resemble real ones — and 0.81 / 0.73 once the ranking was normalised (see
+  the amendment).
 - **The `app` image back to 391 MB** from 649 — the model weights, `numpy`,
   `tokenizers`, `hf_xet` and `huggingface_hub` all go.
 - **No model download in any build**, and no `HF_HUB_OFFLINE` guard needed to stop
@@ -136,4 +195,7 @@ refilled without the measurement above being redone.
   ADR-008's original trigger applies.
 - Paraphrase recall matters more than it does today. The honest first move then is
   **better chunking**, not a bigger embedder: the measurement above shows the
-  bottleneck is not the vectors.
+  bottleneck is not the vectors. Note that the cheapest version of "better
+  chunking" — folding the locator into the indexed text — has now been tried and
+  measured worse; the remaining five failures are questions the chunk boundaries
+  answer across, not questions a title would have fixed.

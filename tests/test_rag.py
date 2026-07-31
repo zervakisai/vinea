@@ -302,6 +302,70 @@ def test_search_never_crosses_a_source_boundary(ingested):
 
 
 @pytest.mark.db
+def test_the_ranking_prefers_the_passage_that_is_mostly_the_answer(db_session):
+    """One sentence, and the same sentence buried in a page about something else.
+
+    Two chunks, identical query terms, forty times the length. Unnormalised,
+    `ts_rank_cd` scores them **exactly the same** -- 0.70 and 0.70 -- because cover
+    density counts the covers of query terms and the padding contributes none. The
+    ranking is then decided by the tiebreak, which is `c.id`: insertion order. That
+    is worse than a length bias. A bias is at least a consistent opinion; this is the
+    retriever having no opinion at all and the corpus builder's file order casting
+    the deciding vote.
+
+    So the long chunk is ingested FIRST. Without normalisation it wins the tiebreak
+    and this test goes red; `ts_rank_cd(..., 2)` divides by document length and the
+    focused passage wins on merit (0.064 against 0.002).
+
+    This has to be constructed. The corpus cannot isolate it, and the recall floors
+    would not notice until a question fell past rank 3 -- which is how the
+    unnormalised query survived from ADR-011 until now.
+    """
+    from vinea.rag.corpus import Chunk
+    from vinea.rag.store import ingest, search
+
+    sentence = (
+        "Readily available water is the fraction of total available water a crop "
+        "can extract without stress."
+    )
+    about_something_else = " ".join(
+        ["Wind speed is measured at two metres above the ground surface."] * 40
+    )
+
+    ingest(
+        db_session,
+        [
+            # Lower id, so it wins any tie. This is the arrangement an unnormalised
+            # rank cannot survive.
+            Chunk(
+                id=9001, chapter=8, section="padded", locator="Chapter 8 — padded",
+                text=f"{sentence} {about_something_else}",
+            ),
+            Chunk(
+                id=9002, chapter=8, section="focused", locator="Chapter 8 — focused",
+                text=sentence,
+            ),
+        ],
+        source="test-normalisation",
+    )
+
+    hits = search(
+        db_session, "readily available water a crop can extract",
+        source="test-normalisation", top_k=2,
+    )
+    assert len(hits) == 2, f"both chunks contain the query terms: {hits}"
+    assert hits[0].locator.endswith("focused"), (
+        "the padded chunk ranked first, so the score is not length-normalised and "
+        "the tiebreak (insertion order) is deciding retrieval: "
+        f"{[(h.locator, round(h.score, 5)) for h in hits]}"
+    )
+    assert hits[0].score > hits[1].score, (
+        "the two scored equal, which means the ranking cannot distinguish a passage "
+        "that is mostly the answer from one that merely contains it"
+    )
+
+
+@pytest.mark.db
 def test_reingesting_the_same_corpus_overwrites_rather_than_duplicates(db_session):
     """The same idempotency shape as the advisory upsert, for the same reason:
     this will be run twice by someone unsure whether the first run worked."""
@@ -324,31 +388,55 @@ def test_reingesting_the_same_corpus_overwrites_rather_than_duplicates(db_sessio
 # --------------------------------------------------------------------------- #
 
 
-# The floors the gate holds, measured 2026-07-30 over 27 questions, top_k=3.
+# The floors the gate holds. Reproduce any of these with:
+#
+#   uv run python scripts/measure_retrieval.py --misses
+#
+# Measured 2026-07-31 over 27 questions. The shipped query is `to_tsvector(text)`
+# ranked by `ts_rank_cd(..., 2)` -- length-normalised:
+#
+#   set           r@1    r@3    r@5    MRR
+#   all 27        0.52   0.81   0.85   0.674
+#   paraphrase    0.47   0.73   0.73   0.607
 #
 # The original twelve questions were written alongside the chunker, in the
 # document's own vocabulary, and scored 1.00. That was not retrieval quality; it
-# was the questions being easy. Fifteen paraphrases -- the same questions as a
-# grower would ask them -- took the overall number to 0.70 and the paraphrase half
-# to 0.47. Those are the real figures.
+# was the questions being easy. The fifteen paraphrases are the honest number.
 #
-# Before lowering anything, the obvious lever was measured. A larger embedder is
-# NOT the answer here:
+# Two levers have been measured and rejected, and both are still runnable from the
+# script above so the rejection stays checkable.
+#
+# A larger embedder, back when there was one (ADR-011 removed it):
 #
 #   potion-base-8M        dim 256   all 0.70   paraphrase 0.47
 #   potion-base-32M       dim 512   all 0.74   paraphrase 0.53
 #   potion-retrieval-32M  dim 512   all 0.70   paraphrase 0.47
 #
-# Four times the model, twice the vector width, and a schema migration, for one
-# extra question out of 27 -- and the retrieval-tuned variant buys nothing at all.
-# ADR-003's rule applies: it does not earn its place. The bottleneck is the corpus
-# and the chunking, not the embedder, and pretending otherwise would have cost a
-# migration to hide the fact.
+# Four times the model and a schema migration for one question out of 27.
 #
-# Two floors rather than one, because a single average lets the easy half carry
-# the hard half. Each sits one miss below what was measured.
-RECALL_AT_3_FLOOR = 0.66            # 18/27
-PARAPHRASE_RECALL_FLOOR = 0.40      # 6/15
+# Putting the locator into the tsvector, which sounds obviously right -- a locator
+# like "Chapter 8 — ETc under soil water and salinity stress conditions" is real
+# signal, and the dense path had indexed exactly that string:
+#
+#   variant                  orig 12   paraphrase   all 27   MRR
+#   text, /length               0.92      0.73        0.81   0.674
+#   locator+text, no norm       1.00      0.67        0.81   0.640
+#   locator+text, /length       1.00      0.60        0.78   0.711
+#
+# It takes the easy half to a perfect score and costs two of the paraphrases,
+# because long section titles are mostly common words: a question about a windy day
+# ranks "...soil water and salinity stress conditions" first for containing "water".
+# The same failure ADR-011 records, one level down -- the change that looks
+# principled scores best on the questions its author wrote.
+#
+# Three floors rather than one. A single average lets the easy half carry the hard
+# half, and recall@3 alone moves in steps of 1/27, which makes a one-question
+# fluctuation look like a result -- MRR is what actually distinguished the variants
+# above, so it is what the gate watches for a regression the recall floors would
+# sleep through. Each sits roughly one miss below what was measured.
+RECALL_AT_3_FLOOR = 0.77            # 21/27, measured 0.81
+PARAPHRASE_RECALL_FLOOR = 0.66      # 10/15, measured 0.73
+MRR_FLOOR = 0.60                    # measured 0.674 over all 27
 
 
 @pytest.mark.db
@@ -359,24 +447,39 @@ def test_recall_at_3_over_the_labelled_questions(db_session):
     ids move whenever the corpus is regenerated, and a gate that goes red for
     that reason gets deleted rather than investigated.
     """
+    from vinea.evals.retrieval import DEFAULT_DEPTH, score_ranked_results
     from vinea.rag.store import ingest, search
 
     ingest(db_session, corpus.load_corpus(), source="test-recall")
 
-    hit_count = 0
-    misses: list[str] = []
-    for question in QUESTIONS:
-        results = search(db_session, question["query"], source="test-recall", top_k=3)
-        found = {int(r.locator.split()[1].rstrip(":—-")) for r in results if r.locator.startswith("Chapter ")}
-        if found & set(question["chapters"]):
-            hit_count += 1
-        else:
-            misses.append(f"{question['id']}: wanted {question['chapters']}, got {sorted(found)}")
+    # Retrieved to DEFAULT_DEPTH rather than 3, because MRR needs to see where a
+    # missed passage actually landed. `search` is the shipped function, so what is
+    # scored is what an agent would be shown -- only more of it.
+    score = score_ranked_results(
+        [
+            (
+                q["id"],
+                [
+                    hit.locator
+                    for hit in search(
+                        db_session, q["query"], source="test-recall", top_k=DEFAULT_DEPTH
+                    )
+                ],
+            )
+            for q in QUESTIONS
+        ],
+        [set(q["chapters"]) for q in QUESTIONS],
+    )
 
-    recall = hit_count / len(QUESTIONS)
-    assert recall >= RECALL_AT_3_FLOOR, (
-        f"recall@3 = {recall:.2f} < {RECALL_AT_3_FLOOR} over {len(QUESTIONS)} questions.\n"
-        + "\n".join(misses)
+    detail = f"{score.summary}\noutside top-3: {', '.join(score.outside_top_3) or 'none'}"
+    assert score.recall_at_3 >= RECALL_AT_3_FLOOR, (
+        f"recall@3 = {score.recall_at_3:.2f} < {RECALL_AT_3_FLOOR} "
+        f"over {len(QUESTIONS)} questions.\n{detail}"
+    )
+    assert score.mrr >= MRR_FLOOR, (
+        f"MRR = {score.mrr:.3f} < {MRR_FLOOR}. Recall@3 still passes, so the correct "
+        f"passages are being found and ranked lower -- which recall@3 alone would not "
+        f"have caught until one of them fell past rank 3.\n{detail}"
     )
 
 
@@ -610,10 +713,16 @@ def test_recall_on_the_paraphrased_half_has_its_own_floor(db_session):
     """The hard half, gated separately so the easy half cannot carry it.
 
     A single averaged number lets twelve questions written in the manual's own
-    vocabulary hide fifteen written the way a grower speaks. Measured: 0.47 on
-    the paraphrases against 0.93 on the originals -- the gap is the honest
-    statement of how good this retrieval actually is on natural language.
+    vocabulary hide fifteen written the way a grower speaks. Measured: 0.73 on the
+    paraphrases against 0.92 on the originals -- the gap is the honest statement of
+    how good this retrieval is on natural language.
+
+    This floor is also the one that rejected putting the locator into the tsvector.
+    That change takes the originals to 1.00 and drops this number to 0.60; without a
+    separate floor for the hard half it would have looked like an improvement and
+    shipped.
     """
+    from vinea.evals.retrieval import DEFAULT_DEPTH, score_ranked_results
     from vinea.rag.store import ingest, search
 
     ingest(db_session, corpus.load_corpus(), source="test-para")
@@ -621,17 +730,24 @@ def test_recall_on_the_paraphrased_half_has_its_own_floor(db_session):
     paraphrases = [q for q in QUESTIONS if q.get("style") == "paraphrase"]
     assert paraphrases, "the paraphrase set has gone missing from the fixture"
 
-    hits, misses = 0, []
-    for question in paraphrases:
-        results = search(db_session, question["query"], source="test-para", top_k=3)
-        found = {int(r.locator.split()[1].rstrip(":—-")) for r in results if r.locator.startswith("Chapter ")}
-        if found & set(question["chapters"]):
-            hits += 1
-        else:
-            misses.append(f"{question['id']}: wanted {question['chapters']}, got {sorted(found)}")
+    score = score_ranked_results(
+        [
+            (
+                q["id"],
+                [
+                    hit.locator
+                    for hit in search(
+                        db_session, q["query"], source="test-para", top_k=DEFAULT_DEPTH
+                    )
+                ],
+            )
+            for q in paraphrases
+        ],
+        [set(q["chapters"]) for q in paraphrases],
+    )
 
-    recall = hits / len(paraphrases)
-    assert recall >= PARAPHRASE_RECALL_FLOOR, (
-        f"paraphrase recall@3 = {recall:.2f} < {PARAPHRASE_RECALL_FLOOR} "
-        f"over {len(paraphrases)} questions.\n" + "\n".join(misses)
+    assert score.recall_at_3 >= PARAPHRASE_RECALL_FLOOR, (
+        f"paraphrase recall@3 = {score.recall_at_3:.2f} < {PARAPHRASE_RECALL_FLOOR} "
+        f"over {len(paraphrases)} questions.\n{score.summary}\n"
+        f"outside top-3: {', '.join(score.outside_top_3) or 'none'}"
     )

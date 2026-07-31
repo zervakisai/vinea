@@ -227,6 +227,17 @@ file is one nobody rechecks.
 
 See [`data/ATTRIBUTION.md`](data/ATTRIBUTION.md) for full provenance.
 
+Retrieval quality is gated, not asserted: 27 chapter-labelled questions, twelve in
+the manual's vocabulary and fifteen phrased the way a grower asks. Each half has its
+own floor, because a single average lets the easy twelve carry the hard fifteen —
+and that separation is what rejected the last two changes proposed to the retriever.
+An MRR floor sits alongside them, because recall@3 over 27 questions moves in steps
+of 0.037 and a one-question win is a coin toss with a decimal point.
+
+```bash
+uv run python scripts/measure_retrieval.py --misses   # every number, re-derived
+```
+
 ## Deploy
 
 One Helm chart, provider-agnostic, four workloads: the API, the Streamlit UI, the
@@ -357,15 +368,25 @@ it. One has been reversed, by measurement.
 | [010](docs/adr/010-slos-in-sql.md) | SLOs measured in SQL |
 | [011](docs/adr/011-lexical-retrieval-only.md) | Lexical retrieval only — reversing 008's hybrid |
 
-ADR-004 and ADR-010 carry amendments rather than rewrites: 010 recorded "Langfuse
-not deployed" as a *permanent* debt and that ruling has been retracted, because
-"permanent" was a judgement about cost rather than a fact about the system.
+Several carry amendments rather than rewrites. ADR-010 recorded "Langfuse not
+deployed" as a *permanent* debt and that ruling has been retracted, because
+"permanent" was a judgement about cost rather than a fact about the system; it also
+deferred alerting "until somebody is on a rota", which one operator watching one
+channel now satisfies.
 
 ADR-011 is the one worth reading first. Hybrid retrieval was chosen on a measured
 recall of 1.00, then a harder question set showed lexical search alone scored **0.78
 against the hybrid's 0.70** — the weak embedder was displacing correct results. A
 larger model was measured before reversing and bought one question out of 27. The
 dense half was deleted and the image lost 258 MB.
+
+Its amendment is the sequel, and the same mistake caught earlier. Deleting the
+dense half made `ts_rank_cd` the entire retriever and nobody noticed it was running
+on defaults: length-normalising the rank took MRR from 0.553 to 0.674 and r@1 from
+0.37 to 0.52. Then the obvious follow-up — index the section title alongside the
+text — was measured and **rejected**, because it takes the easy questions to a
+perfect 1.00 and costs two of the ones phrased the way a grower speaks. Reproduce
+either with `uv run python scripts/measure_retrieval.py --misses`.
 
 ## Layout
 
@@ -379,14 +400,14 @@ src/vinea/  features · contracts · deps · reconcile     the agronomy
             api/      FastAPI, auth, schemas
             ui/       Streamlit panels
             prompts/  name@label registry, cache, drift check
-            evals/    oracles, asymmetric scoring, golden replay
+            evals/    oracles, asymmetric scoring, golden replay, retrieval scoring
             gateway/  routing, cost ledger, budget refusals
             rag/      corpus, chunk store, queries, citations
             context/  token accounting, per-leg budget
-            slo/      objectives, SLIs in SQL, error budgets
+            slo/      objectives, SLIs in SQL, error budgets, the breach webhook
             security.py  bounded free text (not an injection filter)
 data/       two CSVs + corpus/ + ATTRIBUTION.md
-scripts/    fetch_dataset.py · fetch_corpus.py
+scripts/    fetch_dataset.py · fetch_corpus.py · measure_retrieval.py
 infra/      chart/ Helm · tofu/ the paid path · kind-e2e.sh · sealed-secrets/
 docs/       adr/ · runbooks/ · engineering-log/
 migrations/ Alembic versions (the schema actually shipped)
