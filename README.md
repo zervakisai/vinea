@@ -5,9 +5,14 @@ produced overnight from hourly vineyard weather.
 
 ### ▶ [Try it — a month of real advisories](https://zervakisai.github.io/vinea-demo.html)
 
-Two real Greek wine regions, thirty nights each. Pick a site, drag the date, and open
-*Check the arithmetic* — every figure was computed by `features.py`, and the page
-shows the working so you can verify the headline by hand.
+> **Water tonight — about 130 mm.** The soil is 130 mm short of water; that is 1.9×
+> the 68 mm mark where the vines begin to struggle.
+> **Spray midnight–02:00 or 21:00–midnight.** Only 5 hours tomorrow are calm, cool and
+> dry enough that the spray will not drift, evaporate or wash off.
+
+Two real Greek wine regions, thirty nights each. Drag through the month, then open
+*Check the arithmetic* — every figure was computed by `features.py`, and the page shows
+the working so you can verify the headline by hand.
 
 ---
 
